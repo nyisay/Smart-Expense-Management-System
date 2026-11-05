@@ -1,0 +1,180 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Currency {
+  MMK
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+model User {
+  id           String        @id @default(uuid()) @db.Uuid
+  email        String        @unique @db.VarChar(254)
+  name         String        @db.VarChar(80)
+  passwordHash String
+  createdAt    DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime      @updatedAt @db.Timestamptz(3)
+  transactions Transaction[]
+  receipts     Receipt[]
+  groups       Group[]
+}
+
+model Category {
+  id           String          @id @default(uuid()) @db.Uuid
+  key          String          @unique @db.VarChar(40)
+  name         String          @db.VarChar(80)
+  type         TransactionType
+  transactions Transaction[]
+  receipts     Receipt[]
+
+  @@unique([id, type])
+}
+
+model Transaction {
+  id            String          @id @default(uuid()) @db.Uuid
+  ownerId       String          @db.Uuid
+  categoryId    String          @db.Uuid
+  type          TransactionType
+  amountMinor   BigInt
+  currency      Currency        @default(MMK)
+  occurredOn    DateTime        @db.Date
+  merchant      String?         @db.VarChar(200)
+  note          String?         @db.VarChar(1000)
+  receiptId     String?         @unique @db.Uuid
+  submissionKey String          @db.Uuid
+  version       Int             @default(1)
+  createdAt     DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime        @updatedAt @db.Timestamptz(3)
+  owner         User            @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  category      Category        @relation(fields: [categoryId, type], references: [id, type], onDelete: Restrict)
+  receipt       Receipt?        @relation(fields: [receiptId, ownerId], references: [id, ownerId], onDelete: Restrict)
+
+  @@unique([receiptId, ownerId])
+  @@unique([ownerId, submissionKey])
+  @@index([ownerId, occurredOn])
+  @@index([ownerId, categoryId, occurredOn])
+}
+
+// Metadata foundation only; no image storage or raw OCR retention.
+model Receipt {
+  id          String       @id @default(uuid()) @db.Uuid
+  ownerId     String       @db.Uuid
+  merchant    String?      @db.VarChar(200)
+  amountMinor BigInt?
+  currency    Currency     @default(MMK)
+  occurredOn  DateTime?    @db.Date
+  categoryId  String?      @db.Uuid
+  createdAt   DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime     @updatedAt @db.Timestamptz(3)
+  owner       User         @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  category    Category?    @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  transaction Transaction?
+
+  @@unique([id, ownerId])
+  @@index([ownerId, createdAt])
+  @@index([categoryId])
+}
+
+model Group {
+  id          String         @id @default(uuid()) @db.Uuid
+  ownerId     String         @db.Uuid
+  name        String         @db.VarChar(80)
+  currency    Currency       @default(MMK)
+  createdAt   DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime       @updatedAt @db.Timestamptz(3)
+  owner       User           @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  members     GroupMember[]
+  expenses    GroupExpense[]
+  settlements Settlement[]
+
+  @@index([ownerId])
+}
+
+model GroupMember {
+  id                  String         @id @default(uuid()) @db.Uuid
+  groupId             String         @db.Uuid
+  name                String         @db.VarChar(80)
+  isSelf              Boolean        @default(false)
+  createdAt           DateTime       @default(now()) @db.Timestamptz(3)
+  group               Group          @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  paidExpenses        GroupExpense[]
+  shares              ExpenseShare[]
+  outgoingSettlements Settlement[]   @relation("SettlementFrom")
+  incomingSettlements Settlement[]   @relation("SettlementTo")
+
+  @@unique([id, groupId])
+  @@unique([groupId, name])
+}
+
+model GroupExpense {
+  id            String         @id @default(uuid()) @db.Uuid
+  groupId       String         @db.Uuid
+  payerMemberId String         @db.Uuid
+  title         String         @db.VarChar(200)
+  amountMinor   BigInt
+  currency      Currency       @default(MMK)
+  occurredOn    DateTime       @db.Date
+  submissionKey String         @db.Uuid
+  version       Int            @default(1)
+  createdAt     DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime       @updatedAt @db.Timestamptz(3)
+  group         Group          @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  payer         GroupMember    @relation(fields: [payerMemberId, groupId], references: [id, groupId], onDelete: Restrict)
+  shares        ExpenseShare[]
+
+  @@unique([id, groupId])
+  @@unique([groupId, submissionKey])
+  @@index([groupId, occurredOn])
+  @@index([payerMemberId, groupId])
+}
+
+model ExpenseShare {
+  expenseId String       @db.Uuid
+  memberId  String       @db.Uuid
+  groupId   String       @db.Uuid
+  owedMinor BigInt
+  expense   GroupExpense @relation(fields: [expenseId, groupId], references: [id, groupId], onDelete: Cascade)
+  member    GroupMember  @relation(fields: [memberId, groupId], references: [id, groupId], onDelete: Restrict)
+
+  @@id([expenseId, memberId])
+  @@index([memberId, groupId])
+  @@index([expenseId, groupId])
+}
+
+// Records an external repayment; this application does not move money.
+model Settlement {
+  id            String      @id @default(uuid()) @db.Uuid
+  groupId       String      @db.Uuid
+  fromMemberId  String      @db.Uuid
+  toMemberId    String      @db.Uuid
+  amountMinor   BigInt
+  currency      Currency    @default(MMK)
+  occurredOn    DateTime    @db.Date
+  submissionKey String      @db.Uuid
+  createdAt     DateTime    @default(now()) @db.Timestamptz(3)
+  group         Group       @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  fromMember    GroupMember @relation("SettlementFrom", fields: [fromMemberId, groupId], references: [id, groupId], onDelete: Restrict)
+  toMember      GroupMember @relation("SettlementTo", fields: [toMemberId, groupId], references: [id, groupId], onDelete: Restrict)
+
+  @@unique([groupId, submissionKey])
+  @@index([groupId, occurredOn])
+  @@index([fromMemberId, groupId])
+  @@index([toMemberId, groupId])
+}
+
+model AuthThrottle {
+  keyHash   String   @id @db.Char(64)
+  attempts  Int      @default(1)
+  expiresAt DateTime @db.Timestamptz(3)
+
+  @@index([expiresAt])
+}
