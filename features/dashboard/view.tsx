@@ -85,7 +85,10 @@ export function DashboardView({ data }: { data: DashboardData }) {
             MMK
           </span>
         </Link>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/receipts/new">Upload receipt</Link>
+          </Button>
           <Button variant="ghost" size="sm" asChild>
             <Link href="/transactions">Transactions</Link>
           </Button>

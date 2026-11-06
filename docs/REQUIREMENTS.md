@@ -1,12 +1,12 @@
 # Requirements
 
-Status: database/authentication, transaction management and dashboard authorized and implemented on 2026-11-06. Receipt processing and group/settlement workflows remain planned. See [DECISIONS.md](DECISIONS.md) for accepted scope and deferred receipt processing decisions.
+Status: foundation, transactions and dashboard implemented; local Ollama receipt extraction/review authorized on 2026-11-07. Group/settlement workflows remain planned. See [DECISIONS.md](DECISIONS.md).
 
 ## Goal and boundaries
 
 Make personal spending easy to understand through clear, accurate visualizations. Support manual bookkeeping, receipt-assisted expense entry, and unequal group bills in one small application. Persist financial records in PostgreSQL through Prisma; use Auth.js JWT sessions for email/password authentication.
 
-Confirmed currency/reporting rules: MMK, whole kyat (0 decimal places), Asia/Yangon. The foundation uses owner-managed groups with named participants, one payer per group expense, and explicit owed shares; group records remain separate from personal transactions. Receipt metadata and Settlement models exist as requested, but extraction, image handling, group operations and settlement flows are not implemented. Local-only receipt OCR remains a future proposal.
+Confirmed currency/reporting rules: MMK, whole kyat (0 decimal places), Asia/Yangon. The foundation uses owner-managed groups with named participants, one payer per group expense, and explicit owed shares; group records remain separate from personal transactions. Receipt metadata and Settlement models exist; receipt review saves only confirmed transaction fields. Group operations and settlement flows remain future work.
 
 Defer bank connections, exchange rates, budgets, recurring entries, exports, payment execution, settlement recording UI, invitations, shared group editing, email verification, password recovery, and paid AI integrations. A Settlement model is schema preparation for a recorded external repayment; it does not execute a payment. Do not describe a member balance as a payment made or a bank balance.
 
@@ -50,15 +50,16 @@ Acceptance:
 
 ### FR-04 Receipt-assisted expense entry
 
-Select a JPEG or PNG receipt image, run local OCR, suggest amount, merchant, date, and expense category, and present an editable review form. Category inference is a transparent keyword heuristic with Other as fallback. OCR is assistance, not financial truth; every field remains editable.
+Upload a JPG, PNG or WebP receipt to the authenticated server, extract final total, merchant, calendar date, currency and expense category using local Ollama vision with structured JSON, and present an editable review form. The provider is behind a server-only extraction function seam. Extraction is assistance, not financial truth; every field remains editable. Do not invent values or silently select a fallback category/currency/date.
 
 Acceptance:
 - A legible sample receipt produces candidate fields; missing or ambiguous fields are flagged for review rather than silently treated as correct.
-- No transaction is saved before explicit confirmation. Correcting all four fields and confirming saves exactly those validated values as one expense.
-- OCR failure, cancellation, and unreadable input preserve manual entry as a usable path. Slow OCR has progress and cancel/retry controls.
-- Reject unsupported image types and enforce proposed limits of 10 MiB and 20 megapixels before OCR. Decode errors are handled safely; validate header signatures as well as declared MIME type.
-- Receipt pixels and raw OCR text stay in the browser under the proposed design. Saving transmits only reviewed fields; release temporary image/worker resources on cancel or completion.
-- Test a representative receipt set and document extraction limits; no promise of perfect OCR or universal language support.
+- No transaction is saved before explicit confirmation. Correcting fields and confirming saves exactly those validated values as one owner-scoped expense, with retry-safe creation and dashboard refresh.
+- API failures, invalid structured responses and unreadable input have safe errors, retry and a manual-entry link. Slow extraction has an announced pending state and a 120-second deadline; no fabricated progress percentage.
+- Reject unsupported MIME types, mismatched signatures, corrupt/animated images, uploads above 10 MiB and decoded images above 20 megapixels on the server. Strip metadata and send only decoded/re-encoded pixels to loopback Ollama.
+- No persistent pixels, raw OCR, unconfirmed metadata or sensitive logging. Upload/extraction/confirmation all require persisted authentication; provider settings are server-only. Leaving/reloading discards unsaved suggestions. No tokens or suggestions are stored in browser persistence.
+- Invalid/ambiguous dates, totals and categories become null with review notices. Unknown/non-MMK currencies clear the amount; saving requires explicit MMK confirmation and positive whole kyat, with no implicit currency conversion.
+- Automated extraction tests use mocks, including ambiguous/missing output, failures and a corrected expense reaching real PostgreSQL/dashboard totals. Benchmark real non-sensitive receipts separately; no promise of perfect OCR or universal language support.
 
 ### FR-05 Groups and unequal bill splits
 

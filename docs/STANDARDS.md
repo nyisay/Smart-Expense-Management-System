@@ -6,7 +6,7 @@ Applies when implementation is authorized. [REQUIREMENTS.md](REQUIREMENTS.md) ow
 
 - Keep TypeScript strict. Use explicit domain types at boundaries, `unknown` for untrusted data, and Zod parsing instead of unsafe assertions or `any`.
 - Keep root `app/`; use feature folders for domain code and `components/ui/` for shared shadcn/ui primitives. Reuse existing code before adding helpers. Avoid generic service/repository hierarchies.
-- Prefer Server Components; use client boundaries only for interactivity, charts, and OCR. Mark privileged modules server-only and return minimal serializable results.
+- Prefer Server Components; use client boundaries only for interactivity and charts. Receipt extraction runs server-only under D-04; return minimal serializable suggestions. Mark privileged modules server-only.
 - Use the installed Next.js documentation for the APIs being changed, including Cache Components and request-dependent rendering. Follow existing Tailwind conventions; introduce dependencies only for an approved task and lock their versions.
 - Validate environment variables server-side; expose only intentionally public configuration. Provide a secret-free environment example during setup, explicitly unignoring it if needed (`.env*` is currently ignored).
 

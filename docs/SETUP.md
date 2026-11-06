@@ -12,6 +12,8 @@ Copy `.env.example` to `.env` only when no local environment file already exists
 | DIRECT_URL | Direct PostgreSQL connection for Prisma CLI migrations |
 | AUTH_SECRET | Cryptographically random secret, at least 32 characters; stable across restarts/instances |
 | AUTH_URL | Canonical application origin: local HTTP during development, HTTPS in production |
+| OLLAMA_BASE_URL | Optional server-only loopback HTTP origin; default http://127.0.0.1:11434 |
+| OLLAMA_MODEL | Optional local vision model; default gemma3:4b; cloud suffixes rejected |
 
 The application validates server configuration without printing its values. The checked-in example is deliberately unusable until placeholders are replaced. The local foundation task generated AUTH_SECRET and added a local AUTH_URL only when missing; existing database credentials were preserved.
 
@@ -36,6 +38,44 @@ Visit `/register` and `/login`. `/` and successful login lead to the protected `
 The dashboard reads only the authenticated user's PostgreSQL transactions. Choose an inclusive date range or use This month, Last 6 months or Year to date. The default is the current calendar month in Asia/Yangon. Monthly totals include only the selected dates, so the first/last month can be partial; months with no expenses are zero-filled. Custom ranges support at most 120 calendar months.
 
 Select an expense category by clicking its donut slice, activating its category table button with the keyboard, or using the category filter. This applies to every card, both charts and recent entries; income becomes zero in an expense-only category, and balance remains selected income minus selected expenses. Clear the category to restore all categories. View all opens the transaction list with matching dates/category. All totals, tooltips and exact-value tables use whole MMK. Group bills/settlements are excluded. A new account has meaningful zero and empty states without runtime sample data.
+
+### Receipt upload and local extraction
+
+Open `/receipts/new` from Upload receipt on the dashboard or the new transaction page. Install [Ollama for Windows](https://ollama.com/download/windows) if needed. Do not expose port 11434 publicly. Quit the tray application before starting a separate CLI server; only one Ollama server should bind the port.
+
+In an Ollama PowerShell terminal:
+
+```powershell
+$env:OLLAMA_NO_CLOUD = "1"
+ollama serve
+```
+
+Keep that terminal running. In a second terminal, download the model before opening receipt extraction:
+
+```powershell
+ollama pull gemma3:4b
+```
+
+Alternatively set OLLAMA_NO_CLOUD=1 in Windows user environment variables and restart the Ollama application, as described in the [official FAQ](https://docs.ollama.com/faq). This variable must reach the Ollama process; putting it only in the Next.js `.env` does not configure a separate service. The model download needs Internet access and several GB of disk/memory; inference after download is local. No cloud sign-in or paid API key is required. A local model and sufficient hardware are prerequisites, not installed automatically by the app. The official model page lists [gemma3:4b as vision-capable](https://ollama.com/library/gemma3); 270m/1b variants are text-only.
+
+Keep `OLLAMA_BASE_URL` / `OLLAMA_MODEL` in the server `.env` only if overriding their defaults. Start Next.js normally with `npm.cmd run dev` in another terminal, sign in and open `/receipts/new`. The application server and Ollama must share the same trusted host; remote/container hosting needs a separately reviewed setup. The adapter follows Ollama's current [chat API](https://docs.ollama.com/api/chat), [base64 vision input](https://docs.ollama.com/capabilities/vision), and [JSON-schema structured outputs](https://docs.ollama.com/capabilities/structured-outputs).
+
+Uploads accept static JPG/PNG/WebP up to 10 MiB and 20 megapixels. The server checks MIME/signatures, fully decodes with Sharp, strips metadata and resizes to at most 2400px per side. It sends pixels only to loopback Ollama, with no disk/database image storage, raw OCR logging or retained suggestions. Only explicitly confirmed transaction fields are saved; the Receipt metadata table is not used by this flow. Unsaved suggestions disappear on reload/navigation. Operators must also avoid sensitive proxy/Ollama debug logging and protect host memory/crash dumps.
+
+Review merchant, final total, date, currency and category. Unknown/uncertain values are blank and flagged; unsupported/unknown currency also clears the amount. Only positive whole-kyat MMK expenses can be confirmed. The app never converts currencies. Correcting a review field clears the confirmation checkbox. Saving uses the existing owner-scoped retry-safe expense path and refreshes dashboard totals. Validation/save failures retain entered values in the hydrated React form. No-JavaScript progressive form behavior is not a substitute for the supported interactive React review flow.
+
+Extraction has an announced pending state, a two-minute timeout, bounded output and five attempts per authenticated user per 15 minutes (500 global). Retries and invalid uploads count toward the limit; ordinary manual entry remains available. Unavailable Ollama/model, bad output or corrupt/unsupported images produce safe errors and a manual-entry link. Leaving the page discards the review but does not guarantee immediate cancellation of already-running inference; it is bounded by the timeout. There is no background queue.
+
+Automated tests mock both the extraction service and Ollama HTTP responses; they need no model, API key or paid calls. Real recognition accuracy, latency, peak memory and narrow-screen/keyboard behavior remain manual checks. The application is not a certified receipt/accounting extraction system; ambiguous totals and dates must be verified by the user even if the model fails to flag them.
+
+Manual receipt checks:
+
+- [ ] Start local-only Ollama, pull gemma3:4b and confirm a non-sensitive printed receipt reaches the editable review. Record model/version, language, correctness, latency and memory for several real samples; do not commit sensitive pixels or raw output.
+- [ ] Check JPG, PNG and WebP; reject mismatched MIME, corrupt/animated images, files above 10 MiB and images above 20 megapixels without extraction.
+- [ ] Check a receipt with subtotal/tax/change/multiple totals, an ambiguous date, unreadable fields and unknown/non-MMK currency. Correct suggestions and verify no invented date/currency or automatic conversion is accepted.
+- [ ] Confirm extraction alone leaves transaction/dashboard counts unchanged. Edit every field, check confirmation, save once and verify the owned transaction and matching dashboard date/category totals; retry must not duplicate it.
+- [ ] Stop Ollama or select a missing model; verify safe failure, retry/manual entry and no sensitive logs. Reject unsigned and cross-origin actions.
+- [ ] At 360px/desktop, tab through upload, review controls, errors and confirmation. Verify readable labels, pending announcements, no page overflow and preserved values on save failure.
 
 ### Optional local sample transactions
 
@@ -70,7 +110,9 @@ npx prisma validate
 npx prisma migrate status
 ```
 
-`npm test` covers auth plus transaction validation, exact amounts/dates, actual PostgreSQL CRUD, absent/cross-user authorization, category/type checks, retry races, optimistic conflicts, filter boundaries, pagination and sample seed safety/idempotence. `test:http` requires a current production build and free port 3197. It starts/stops its own production server and verifies actual Auth.js endpoints plus transaction create/edit Server Actions, detail/list filters, signed-out writes, cross-user access and origin rejection. It also covers secure cookies, CSRF, callback restrictions, tampered/expired sessions, logout and deleted users. It simulates a trusted HTTPS proxy using matching forwarded-host/protocol headers over loopback and manually carries cookies; it does not replace a browser/TLS deployment check. It uses an ephemeral auth secret, suppresses request details and emits only redacted error summaries on failure.
+`npm test` covers auth, transactions, dashboard and receipt validation/ownership, exact amounts/dates, actual PostgreSQL CRUD, retries/conflicts, filters/pagination, seed safety, aggregation and mocked local extraction. Receipt tests include format/signature/size/decode/animation limits, uncertain output, invalid dates/currencies, bounded provider responses, no extraction-time persistence and corrected expense/dashboard reconciliation.
+
+`test:http` requires a current production build and free port 3197. It starts/stops its own production Next.js server plus a mock Ollama server on a dynamically allocated loopback port; no real inference or paid call occurs. It verifies Auth.js, transaction forms, receipt upload and hydration form state, explicit confirmation via the pinned Next.js Flight transport, no save before confirmation, corrected receipt totals, retries, signed-out/cross-origin rejection and two-user isolation. The helper reads action IDs from the built server manifest without logging its encryption key; revisit its framework transport import on Next upgrades. It also covers secure cookies, CSRF, callback restrictions, tampered/expired sessions, logout and deleted users. It simulates a trusted HTTPS proxy using matching forwarded-host/protocol headers over loopback and manually carries cookies; it does not replace a live hydrated browser/TLS check. It uses an ephemeral auth secret, suppresses request details and emits only redacted error summaries on failure.
 
 The starter layout still downloads Geist fonts from Google during a cold build; network access is required for that existing behavior. Session and financial data are not shared-cached. Request-dependent protected content renders inside Suspense with Cache Components enabled.
 

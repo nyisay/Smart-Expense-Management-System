@@ -1,6 +1,6 @@
 # Architecture
 
-Status: database/authentication, transaction management and dashboard implemented on 2026-11-06. Receipt processing and group/settlement feature flows are not implemented. See [DECISIONS.md](DECISIONS.md) for scope and [SETUP.md](SETUP.md) for commands and verification.
+Status: foundation, transactions, dashboard and local receipt extraction/review. Group/settlement flows are not implemented. See [DECISIONS.md](DECISIONS.md) for scope and [SETUP.md](SETUP.md) for commands and verification.
 
 ## Runtime and structure
 
@@ -13,6 +13,7 @@ app/                        # public auth pages, protected shell, Auth.js handle
 features/auth/              # Zod schemas, service, password hashing, throttles, actions, form
 features/transactions/      # schemas, owner-scoped store, session wrappers, actions, forms
 features/dashboard/         # filters, PostgreSQL aggregation, exact summaries, Recharts views
+features/receipts/          # image validation, local provider, suggestions, explicit review/save
 components/ui/              # official shadcn/ui primitives
 lib/                        # server env, Prisma singleton, exact money, ownership queries
 prisma/                     # schema, migrations, fixed category seed
@@ -33,6 +34,7 @@ shadcn/ui is initialized with the official CLI's Radix/nova preset and Tailwind 
 | `/dashboard` | Protected financial overview, shared date/category filters, charts and recent records |
 | `/transactions` | Owner-scoped list, URL filters, 20-row pagination |
 | `/transactions/new` | Income/expense creation with retry key |
+| `/receipts/new` | Protected temporary upload, local extraction and editable confirmation |
 | `/transactions/[id]` | Owned transaction detail and delete confirmation |
 | `/transactions/[id]/edit` | Owned transaction correction with version check |
 | `/api/auth/[...nextauth]` | Auth.js GET/POST protocol handlers, built-in CSRF |
@@ -96,6 +98,12 @@ Server Actions use Next.js origin checks; direct Auth.js POST routes use its CSR
 
 ## Receipt and deployment boundaries
 
-Receipt metadata and Settlement are explicitly requested schema foundations. Receipt OCR, image retention, category extraction, bill/settlement forms and payment execution are absent. The local-browser OCR proposal remains pending; do not interpret the Receipt model as approval for storing receipt images.
+Receipt extraction uses authenticated Server Actions and the existing origin checks. The action body limit is 11 MiB for multipart overhead; the image itself is limited to 10 MiB. Sharp 0.35.5 is a direct dependency for full decoding, signature/MIME agreement, 20-megapixel and single-frame limits, metadata stripping and a maximum 2400px side before inference. No image is written to disk or PostgreSQL. Existing AuthThrottle counters also bound receipt extraction attempts.
+
+The server-only ReceiptExtractor accepts prepared bytes and expense category IDs/names. Its Ollama adapter sends a non-streaming /api/chat request with Zod-derived JSON schema and base64 pixels; fetch is uncached, redirects rejected, loopback HTTP URLs only, cloud model suffixes rejected, timeout 120 seconds and response at most 64 KiB. gemma3:4b is the default; the host must install it and disable Ollama cloud features. There is no paid API key or client provider configuration.
+
+Zod checks all output and blanks uncertain/invalid fields. Currency never defaults to MMK; unsupported/unknown currency also blanks amount. React holds editable suggestions only in memory. A separately authenticated action validates explicit confirmation/currency and delegates to the existing owned EXPENSE creation path with a stable per-review UUID retry key. It ignores submitted identity by constructing only allowed fields, revalidates transactions/dashboard, and redirects to the saved transaction. Reviewed transaction fields are the sole persistence; Receipt metadata remains unused. No schema/migration change. Mock transport/service tests and real HTTP confirmation cover this boundary; real OCR quality is a manual prerequisite.
+
+Group/settlement forms, image retention and payment execution remain absent.
 
 No hosting provider is selected or provisioned. Production TLS, trusted reverse proxy configuration, backups/restores and secrets management require verification before a separately authorized launch. Tests simulate HTTPS cookie behavior over loopback and cannot prove browser TLS or production infrastructure. SETUP.md records manual checks and official sources.

@@ -5,7 +5,7 @@ import { getServerEnv } from "@/lib/env";
 
 export const THROTTLE_WINDOW_MS = 15 * 60 * 1000;
 
-export async function allowAuthAttempt(action: "login" | "register", email: string) {
+export async function allowAuthAttempt(action: "login" | "register" | "receipt", email: string) {
   const window = Math.floor(Date.now() / THROTTLE_WINDOW_MS);
   const expiresAt = new Date((window + 1) * THROTTLE_WINDOW_MS);
   const secret = getServerEnv().AUTH_SECRET;

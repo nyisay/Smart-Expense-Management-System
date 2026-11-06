@@ -1,6 +1,6 @@
 # Implementation tasks
 
-Status legend: `[x]` complete, `[ ]` pending. Database/authentication, transactions and dashboard implementation were authorized on 2026-11-06. Receipt-processing choices remain deferred. FR references resolve to [REQUIREMENTS.md](REQUIREMENTS.md).
+Status legend: `[x]` complete, `[ ]` pending. Foundation, transactions and dashboard are implemented. Local Ollama receipt extraction/review was approved on 2026-11-07 (D-04). FR references resolve to [REQUIREMENTS.md](REQUIREMENTS.md).
 
 ## Scoped setup — Authorized 2026-11-06
 
@@ -15,7 +15,7 @@ Status legend: `[x]` complete, `[ ]` pending. Database/authentication, transacti
 - [x] Create the root agent workflow and six planning documents; preserve generated Next.js rules.
 - [x] Record foundation authorization, revised model list, and confirmed MMK/0/Asia/Yangon in DECISIONS.md. D-04 is deferred until receipt feature work.
 
-Exit: foundation scope is recorded and authorized. Receipt-processing approval remains a gate for phase 3, not for authentication.
+Exit: foundation scope is recorded and authorized. The separate phase 3 provider approval is now recorded in D-04.
 
 ## Phase 1 — Foundation and secure authentication
 
@@ -50,13 +50,15 @@ Transaction and dashboard milestones: implementation and automated checks are co
 
 ## Phase 3 — Receipt review
 
-Depends on phase 2 and D-04 approval.
+Depends on phase 2 and D-04 approval. D-04 is now accepted; server-side local Ollama supersedes browser OCR.
 
-- [ ] Benchmark proposed local OCR on a small recorded set of printed English receipts; document success/failure examples, resource usage and asset loading. Escalate architecture changes if the approach is unusable.
-- [ ] Implement bounded image selection, OCR progress/cancellation and parsing suggestions, then an editable review form using the existing transaction creation path.
-- [ ] Cover successful corrections, ambiguity, OCR failure, invalid/oversized images, repeat confirmation and resource cleanup.
+- [x] Record the user's local Ollama approval and document temporary server upload, no retention, exact MMK and explicit review boundaries.
+- [x] Implement authenticated image validation/decoding, bounded local JSON-schema extraction with a replaceable provider seam, null/uncertainty handling and an editable review with explicit confirmation using the existing transaction creation path.
+- [x] Verify validation, mocked provider failures/ambiguity, no save before confirmation, corrected values, ownership, retry safety and dashboard refresh with unit/PostgreSQL/HTTP tests; pass typecheck/lint/build.
+- [ ] Benchmark non-sensitive real printed receipts, recording correctness, runtime/model, language, latency and resource use. Local Ollama is unavailable in the implementation environment; no real OCR quality claim is made.
+- [ ] Complete manual desktop/360px, keyboard, errors and review-state preservation checks in SETUP.md.
 
-Exit: FR-04 passes; explicit confirmation is the sole save step; no paid AI credentials or external image processing is required; observed OCR limitations are documented.
+Exit: FR-04 automated criteria pass; explicit confirmation is the sole save step; no paid AI credentials or remote image processing is required. Real recognition and browser checks remain open until observed.
 
 ## Phase 4 — Unequal bill groups
 

@@ -1,6 +1,6 @@
 # Codex workflow
 
-Smart Expense Management is a visualization-first MVP. The database/authentication foundation, transaction management and dashboard are authorized and implemented. Receipt processing, group UI, and settlement flows need a subsequent feature request. Follow the accepted scope and remaining proposals in [docs/DECISIONS.md](docs/DECISIONS.md).
+Smart Expense Management is a visualization-first MVP. The database/authentication foundation, transaction management, dashboard and local Ollama receipt extraction/review are authorized. Group UI and settlement flows need a subsequent feature request. Follow the accepted scope and remaining proposals in [docs/DECISIONS.md](docs/DECISIONS.md).
 
 ## Start each task
 

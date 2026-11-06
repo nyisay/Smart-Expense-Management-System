@@ -24,6 +24,12 @@ export default async function NewTransactionPage() {
         <p className="mt-2 text-sm text-muted-foreground">
           Record an income or expense in whole kyat.
         </p>
+        <Link
+          href="/receipts/new"
+          className="mt-2 inline-block text-sm underline underline-offset-4"
+        >
+          Or upload a receipt for assisted entry
+        </Link>
       </header>
       <Card>
         <CardContent className="pt-6">

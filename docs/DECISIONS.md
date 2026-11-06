@@ -32,9 +32,13 @@ Tradeoff: schema preparation is available without building those features. Same-
 
 ## D-04 — Receipt OCR and retention
 
-Status: Deferred; not approved or implemented by the foundation request.
+Status: Accepted for receipt implementation, 2026-11-07. User response: "Local Ollama vision (free; local runtime required)".
 
-The prior proposal is browser OCR using a free local engine, editable review and no image retention. Engine/library selection, languages and any server upload/storage require approval when receipt feature work is requested. The new Receipt model is metadata preparation only.
+This supersedes the browser OCR proposal. Authenticated Server Actions accept static JPG/PNG/WebP up to 10 MiB / 20 megapixels; Sharp validates signatures, decodes, strips metadata, orients and bounds pixels before loopback-only Ollama extraction. Use its current /api/chat JSON-schema format, with gemma3:4b as the configurable local vision default. No paid API, image retention, raw OCR persistence or provider SDK is needed. Configure Ollama itself with cloud disabled; run it on the same trusted machine as Next.js. A remote/cloud deployment needs a subsequent decision.
+
+The server-only ReceiptExtractor function is the provider seam. Zod validates structured output; missing, uncertain, invalid dates/categories and non-whole-kyat totals become null for review. Unknown/non-MMK currency clears the suggested amount; no currency is assumed or converted. Reviewed fields must be explicitly confirmed with currency MMK before the existing owner-scoped, exact-money, retry-safe expense creation path runs. Saving persists only reviewed transaction fields; the optional Receipt metadata model remains unused, avoiding redundant suggestions and additional retention. All suggestions/images are otherwise transient; no migration is needed.
+
+Tradeoffs: the model/runtime download and suitable local hardware are prerequisites. A 120-second timeout, 64 KiB response cap, 1024-token generation cap and shared five-per-user/500-global attempts per 15 minutes bound extraction; there is no queue or background job. App requests/logs do not retain images or raw output. Operating-system memory, operator-configured Ollama/debug logs and crash dumps remain the host operator's responsibility. Real receipt accuracy/performance and browser visual checks require separate manual verification; mocks do not prove OCR quality.
 
 ## Implementation note — Local migrations
 
@@ -42,7 +46,7 @@ PostgreSQL accepts IPv4 but times out on IPv6. Prisma's schema engine failed on 
 
 ## Approval boundary
 
-The foundation, transaction milestone and dashboard are authorized and implemented; receipt processing, group management and settlement UI remain unimplemented. Ask before changing currency/accounting, adding shared account membership, retaining images, changing the auth/session strategy, introducing paid services, destructive data changes or deployment.
+The foundation, transaction milestone, dashboard and local receipt extraction/review are authorized. Group management and settlement UI remain unimplemented. Ask before changing currency/accounting, adding shared account membership, retaining images, changing the auth/session strategy, introducing paid/remote extraction services, destructive data changes or deployment.
 
 ## Transaction milestone — 2026-11-06
 

@@ -3,6 +3,11 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
+import { createServer } from "node:http";
+import { createRequire } from "node:module";
+import { readFileSync } from "node:fs";
+import { z } from "zod";
+import sharp from "sharp";
 import { randomBytes, randomUUID } from "node:crypto";
 import { encode } from "next-auth/jwt";
 import { prisma } from "../../lib/prisma";
@@ -33,6 +38,40 @@ test(
         passwordHash: "not-a-login-fixture",
       },
     });
+    const receiptCategory = await prisma.category.findUniqueOrThrow({
+      where: { key: "expense-food" },
+    });
+    let extractionCalls = 0;
+    const ollama = createServer(async (req, res) => {
+      if (req.method !== "POST" || req.url !== "/api/chat") {
+        res.writeHead(404).end();
+        return;
+      }
+      for await (const chunk of req) {
+        void chunk;
+      }
+      extractionCalls++;
+      res.setHeader("Content-Type", "application/json");
+      res.end(
+        JSON.stringify({
+          done: true,
+          message: {
+            content: JSON.stringify({
+              merchant: "Mock receipt shop",
+              total: "12500",
+              date: "2026-11-07",
+              currency: "MMK",
+              categoryId: receiptCategory.id,
+              uncertain: [],
+            }),
+          },
+        }),
+      );
+    });
+    ollama.listen(0, "127.0.0.1");
+    await once(ollama, "listening");
+    const ollamaAddress = ollama.address();
+    assert.ok(ollamaAddress && typeof ollamaAddress !== "string");
     const server = spawn(
       process.execPath,
       [
@@ -49,6 +88,8 @@ test(
           NODE_ENV: "production",
           AUTH_URL: canonical,
           AUTH_SECRET: secret,
+          OLLAMA_BASE_URL: `http://127.0.0.1:${ollamaAddress.port}`,
+          OLLAMA_MODEL: "gemma3:4b",
         },
         stdio: ["ignore", "pipe", "pipe"],
         windowsHide: true,
@@ -414,6 +455,182 @@ test(
           'data-summary="expenses" data-amount="0"',
         ),
       );
+      const receiptPage = await (await request("/receipts/new")).text();
+      assert.ok(receiptPage.includes("Receipt to expense"));
+      const anonymousReceiptPage = await (
+        await request("/receipts/new", {}, new Map())
+      ).text();
+      assert.equal(anonymousReceiptPage.includes("Receipt to expense"), false);
+      const receiptBytes = await sharp({
+        create: { width: 32, height: 48, channels: 3, background: "white" },
+      })
+        .png()
+        .toBuffer();
+      const upload = transactionForm(receiptPage, {});
+      upload.set(
+        "image",
+        new File([new Uint8Array(receiptBytes)], "test.png", {
+          type: "image/png",
+        }),
+      );
+      const deniedUpload = await request(
+        "/receipts/new",
+        { method: "POST", headers: { origin: canonical }, body: upload },
+        new Map(),
+      );
+      assert.equal(deniedUpload.status, 303);
+      assert.equal(extractionCalls, 0);
+      const forgedOrigin = await request("/receipts/new", {
+        method: "POST",
+        headers: { origin: "https://evil.example" },
+        body: upload,
+      });
+      assert.equal(forgedOrigin.status, 500);
+      assert.equal(extractionCalls, 0);
+      const extracted = await request("/receipts/new", {
+        method: "POST",
+        headers: { origin: canonical },
+        body: upload,
+      });
+      const reviewHtml = await extracted.text();
+      assert.equal(extracted.status, 200);
+      assert.equal(extractionCalls, 1);
+      assert.ok(reviewHtml.includes("Mock receipt shop"));
+      assert.equal(
+        await prisma.transaction.count({ where: { ownerId: user.id } }),
+        0,
+        "Extraction does not save",
+      );
+      // Cache Components delivers the extracted review through hydration form state.
+      const reviewKey = reviewHtml
+        .replace(/\\"/g, '"')
+        .match(/"reviewKey":"([a-f0-9-]+)"/)?.[1];
+      assert.ok(
+        reviewKey,
+        "Extraction returns a stable confirmation retry key",
+      );
+      // shortcut: pinned Next.js Flight transport; revisit on framework upgrades.
+      const {
+        encodeReply,
+      }: { encodeReply: (args: unknown[]) => Promise<FormData | string> } =
+        createRequire(import.meta.url)(
+          "next/dist/compiled/react-server-dom-turbopack/client.node",
+        );
+      const manifest = z
+        .object({
+          node: z.record(
+            z.string(),
+            z.object({ exportedName: z.string().optional() }),
+          ),
+        })
+        .parse(
+          JSON.parse(
+            readFileSync(
+              new URL(
+                "../../.next/server/server-reference-manifest.json",
+                import.meta.url,
+              ),
+              "utf8",
+            ),
+          ),
+        );
+      const confirmActionId = Object.entries(manifest.node).find(
+        ([, entry]) => entry.exportedName === "confirmReceiptAction",
+      )?.[0];
+      assert.ok(confirmActionId);
+      async function receiptConfirmation(
+        fields: Record<string, string>,
+        cookies = jar,
+      ) {
+        const form = new FormData();
+        for (const [name, value] of Object.entries(fields))
+          form.set(name, value);
+        return request(
+          "/receipts/new",
+          {
+            method: "POST",
+            headers: { origin: canonical, "Next-Action": confirmActionId! },
+            body: await encodeReply([{ message: "" }, form]),
+          },
+          cookies,
+        );
+      }
+      const confirmedValues = {
+        amount: "21000",
+        merchant: "Corrected receipt shop",
+        occurredOn: "2026-11-07",
+        currency: "MMK",
+        categoryId,
+        note: "Reviewed HTTP receipt",
+        confirmed: "yes",
+        submissionKey: reviewKey,
+      };
+      const deniedConfirmation = await receiptConfirmation(
+        confirmedValues,
+        new Map(),
+      );
+      assert.ok(
+        deniedConfirmation.headers
+          .get("x-action-redirect")
+          ?.startsWith("/login;"),
+      );
+      const unconfirmed = await receiptConfirmation({
+        ...confirmedValues,
+        confirmed: "no",
+      });
+      assert.equal(unconfirmed.status, 200);
+      assert.equal(
+        await prisma.transaction.count({ where: { ownerId: user.id } }),
+        0,
+      );
+      const confirmedReceipt = await receiptConfirmation(confirmedValues);
+      assert.ok(
+        confirmedReceipt.headers
+          .get("x-action-redirect")
+          ?.startsWith("/transactions/"),
+      );
+      const confirmedId = new URL(
+        confirmedReceipt.headers.get("x-action-redirect")!.split(";")[0],
+        canonical,
+      ).pathname
+        .split("/")
+        .at(-1)!;
+      const confirmedRecord = await prisma.transaction.findUniqueOrThrow({
+        where: { id: confirmedId },
+      });
+      assert.equal(confirmedRecord.ownerId, user.id);
+      assert.equal(confirmedRecord.amountMinor, BigInt(21000));
+      assert.equal(confirmedRecord.type, "EXPENSE");
+      const receiptDashboard = await (await request(dashboardRange)).text();
+      assert.ok(
+        receiptDashboard.includes(
+          'data-summary="expenses" data-amount="21000"',
+        ),
+      );
+      assert.ok(receiptDashboard.includes("Corrected receipt shop"));
+      assert.equal(
+        (
+          await (
+            await request("/transactions/" + confirmedId, {}, otherJar)
+          ).text()
+        ).includes("Corrected receipt shop"),
+        false,
+      );
+      assert.ok(
+        (await (await request(dashboardRange, {}, otherJar)).text()).includes(
+          'data-summary="expenses" data-amount="0"',
+        ),
+      );
+      await receiptConfirmation(confirmedValues);
+      assert.equal(
+        await prisma.transaction.count({ where: { ownerId: user.id } }),
+        1,
+      );
+      await deleteTransaction(user.id, {
+        id: confirmedId,
+        version: 1,
+        confirmed: "yes",
+      });
       const tampered = new Map(jar);
       tampered.set("__Secure-authjs.session-token", "tampered");
       assert.equal(
@@ -482,6 +699,8 @@ test(
       }
       throw error;
     } finally {
+      ollama.closeAllConnections();
+      await new Promise<void>((resolve) => ollama.close(() => resolve()));
       if (server.exitCode === null) {
         const exit = once(server, "exit");
         server.kill();
