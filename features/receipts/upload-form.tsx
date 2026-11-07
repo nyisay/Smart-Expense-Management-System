@@ -27,10 +27,12 @@ function ReviewForm({
   suggestion,
   submissionKey,
   categories,
+  extracting,
 }: {
   suggestion: ReceiptSuggestion;
   submissionKey: string;
   categories: CategoryOption[];
+  extracting: boolean;
 }) {
   const [state, action, pending] = useActionState(confirmReceiptAction, {
     message: "",
@@ -89,7 +91,7 @@ function ReviewForm({
         <form action={action} className="space-y-5">
           <input type="hidden" name="submissionKey" value={submissionKey} />
           <fieldset
-            disabled={pending}
+            disabled={pending || extracting}
             className="space-y-5 disabled:opacity-60"
           >
             <legend className="sr-only">Reviewed receipt expense</legend>
@@ -226,6 +228,7 @@ function ReviewForm({
             size="lg"
             disabled={
               pending ||
+              extracting ||
               !confirmed ||
               values.currency !== "MMK" ||
               !categories.length
@@ -271,7 +274,7 @@ export function ReceiptUploadForm({
               JPG, PNG or WebP. Maximum 10 MiB and 20 megapixels; static images
               only. Images are processed temporarily by this server and local
               Ollama and are not stored. Suggestions stay in this page until
-              confirmed; leaving or reloading discards them.
+              confirmed; reloading discards them.
             </p>
             <div className="flex flex-wrap gap-3">
               <Button type="submit" disabled={pending}>
@@ -293,12 +296,13 @@ export function ReceiptUploadForm({
           </div>
         </CardContent>
       </Card>
-      {!pending && state.suggestion && state.reviewKey && (
+      {state.suggestion && state.reviewKey && (
         <ReviewForm
           key={state.reviewKey}
           suggestion={state.suggestion}
           submissionKey={state.reviewKey}
           categories={categories}
+          extracting={pending}
         />
       )}
       {!categories.length && (

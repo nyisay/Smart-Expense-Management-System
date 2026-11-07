@@ -10,6 +10,7 @@ import { TransactionError } from "@/features/transactions/store";
 import { ReceiptError } from "./image";
 import { extractReceipt, confirmReceipt } from "./service";
 import type { ReceiptSuggestion } from "./schemas";
+import { previousReviewSchema } from "./schemas";
 
 export type ExtractionState = {
   message: string;
@@ -26,12 +27,16 @@ export async function extractReceiptAction(
   form: FormData,
 ): Promise<ExtractionState> {
   const user = await requireUser();
+  const previous = previousReviewSchema.safeParse(_state);
+  const failed = (message: string): ExtractionState => ({
+    ...(previous.success ? previous.data : {}),
+    message,
+  });
   try {
     if (!(await allowAuthAttempt("receipt", user.id)))
-      return {
-        message:
-          "Extraction limit reached. Try again in 15 minutes or enter the expense manually.",
-      };
+      return failed(
+        "Extraction limit reached. Try again in 15 minutes or enter the expense manually.",
+      );
     const suggestion = await extractReceipt(user.id, form.get("image"));
     return {
       message: "Review every field before saving. Nothing has been saved yet.",
@@ -39,12 +44,11 @@ export async function extractReceiptAction(
       reviewKey: randomUUID(),
     };
   } catch (error) {
-    return {
-      message:
-        error instanceof ReceiptError
-          ? error.message
-          : "Extraction unavailable or returned invalid data. Check local Ollama, retry, or enter the expense manually.",
-    };
+    return failed(
+      error instanceof ReceiptError
+        ? error.message
+        : "Extraction unavailable or returned invalid data. Check local Ollama, retry, or enter the expense manually.",
+    );
   }
 }
 
@@ -81,5 +85,6 @@ export async function confirmReceiptAction(
   }
   revalidatePath("/transactions", "layout");
   revalidatePath("/dashboard");
+  revalidatePath("/receipts/new");
   redirect(`/transactions/${id}?saved=created`);
 }

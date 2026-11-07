@@ -1,6 +1,6 @@
 # Implementation tasks
 
-Status legend: `[x]` complete, `[ ]` pending. Foundation, transactions and dashboard are implemented. Local Ollama receipt extraction/review was approved on 2026-11-07 (D-04). FR references resolve to [REQUIREMENTS.md](REQUIREMENTS.md).
+Status legend: `[x]` complete, `[ ]` pending. Core MVP regression checks now include isolated Playwright at desktop/360px. Manual assistive-technology, representative real-receipt and production release checks remain open. See [MVP_REVIEW.md](MVP_REVIEW.md) for evidence and prioritized issues; FR references resolve to [REQUIREMENTS.md](REQUIREMENTS.md).
 
 ## Scoped setup — Authorized 2026-11-06
 
@@ -38,15 +38,15 @@ Depends on phase 1. Prioritize the end-to-end dashboard before OCR or groups.
 - [x] Build shadcn/ui transaction list/detail/form pages, mobile cards/desktop table, 20-record pagination, delete confirmation, validation feedback, and empty/loading/error/not-found states.
 - [x] Keep the basic category seed and add an opt-in, idempotent 24-transaction sample seed restricted to development and the local database; reject production and remote targets before writes.
 - [x] Add validation/PostgreSQL tests for transaction operations, unauthorized access, retries, conflicts, pagination and seed safety; extend real HTTP checks through create/edit actions and cross-user/cross-origin rejection.
-- [ ] Complete manual desktop/360px visual and keyboard checks from SETUP.md. Browser automation host was unavailable during implementation; structural responsive UI and HTTP rendering checks are covered.
+- [x] Verify transaction desktop/360px layout, forms and confirmations through Playwright, axe and screenshot inspection. Manual assistive-technology assessment remains phase 5 work.
 - [x] Implement authenticated PostgreSQL grouping and exact server-side totals for cards, category donut and zero-filled monthly trends, as requested in the dashboard milestone.
 - [x] Build responsive Recharts/shadcn UI, keyboard-accessible category controls, exact-value tables/tooltips, shared date/category filters, shortcuts, recent transactions, and loading/empty/error states. Runtime values come from PostgreSQL, not fixtures.
 - [x] Verify aggregation, empty datasets, date boundaries, category reconciliation, precision and ownership with unit/PostgreSQL tests; extend HTTP checks for dashboard security and post-mutation refresh.
-- [ ] Complete live donut clicks, hover/tooltips, keyboard navigation and desktop/360px chart layout checks from SETUP.md. The browser access host was unavailable; these are not claimed as passed.
+- [x] Verify real donut clicks/hover, keyboard category toggles, shared date filters and desktop/360px chart layout with isolated Playwright; fix lost focus and tooltip stacking. Native capture itself remains unfixed.
 
 Exit: FR-02 and FR-03 pass, including exact reconciliation, date boundaries, edit/delete refresh, restart persistence, responsive inspection and two-user chart isolation. Applicable automated checks and production build pass.
 
-Transaction and dashboard milestones: implementation and automated checks are complete. Manual browser visual/interaction checks remain explicitly pending. Receipt and group/settlement work require a separate request.
+Transaction/dashboard core browser flows pass isolated Chromium checks. Receipt and group work are also implemented; remaining manual and release verification is tracked below.
 
 ## Phase 3 — Receipt review
 
@@ -55,8 +55,8 @@ Depends on phase 2 and D-04 approval. D-04 is now accepted; server-side local Ol
 - [x] Record the user's local Ollama approval and document temporary server upload, no retention, exact MMK and explicit review boundaries.
 - [x] Implement authenticated image validation/decoding, bounded local JSON-schema extraction with a replaceable provider seam, null/uncertainty handling and an editable review with explicit confirmation using the existing transaction creation path.
 - [x] Verify validation, mocked provider failures/ambiguity, no save before confirmation, corrected values, ownership, retry safety and dashboard refresh with unit/PostgreSQL/HTTP tests; pass typecheck/lint/build.
-- [ ] Benchmark non-sensitive real printed receipts, recording correctness, runtime/model, language, latency and resource use. Local Ollama is unavailable in the implementation environment; no real OCR quality claim is made.
-- [ ] Complete manual desktop/360px, keyboard, errors and review-state preservation checks in SETUP.md.
+- [ ] Benchmark representative non-sensitive real receipts, intended languages and resource use. Local Ollama is now available; two generated English receipts pass five field checks each (46.5/29.3 seconds), which does not close this representative-data gate.
+- [x] Verify desktop/360px receipt upload, uncertainty, mocked failures, confirmation and preservation of corrected fields using Playwright/axe and screenshot inspection. Full manual assistive-technology coverage remains pending.
 
 Exit: FR-04 automated criteria pass; explicit confirmation is the sole save step; no paid AI credentials or remote image processing is required. Real recognition and browser checks remain open until observed.
 
@@ -64,18 +64,21 @@ Exit: FR-04 automated criteria pass; explicit confirmation is the sole save step
 
 Depends on phase 2 and D-03 approval; may follow phase 3 for a simple sequential workflow.
 
-- [ ] Implement owner-managed groups/member labels, bill forms, exact explicit shares, atomic writes and optimistic edit conflicts.
-- [ ] Show bill history and paid/owed/net balances; support bill correction/deletion while preserving membership history.
-- [ ] Test same-group constraints, mismatched share totals, zero shares, retries, rollback, concurrent updates and cross-owner access.
+- [x] Implement owner-managed groups, one self label, named participants/guests, bill forms and exact amount/percentage shares with deterministic largest-remainder rounding. Keep MMK and existing schema.
+- [x] Show bill/share and repayment histories, paid/owed/sent/received/net balances and deterministic "who owes whom" suggestions; support atomic versioned bill correction/deletion while preserving history.
+- [x] Record explicitly confirmed external repayments with retry-payload checks; keep all group records separate from personal transactions/dashboard totals.
+- [x] Test exact/percentage/zero/invalid splits, rounding, multiple expenses, repayments/overpayments, limits, retry races, stale edits, same-group and owner authorization, and dashboard isolation with unit/PostgreSQL and real HTTP form/Flight checks.
+- [x] Verify core group desktop/360px UI, percentage preview, invalid-total correction, consecutive guest creation, repayments and refresh using the subsequently requested isolated Playwright runner. This is actual browser evidence rather than HTTP alone; the previous native capture mismatch is not claimed fixed.
 
-Exit: FR-05 passes; net balances sum to zero, the 20/30/50 example passes, and personal chart totals remain unaffected by group bills.
+Exit: FR-05 core automated/browser acceptance passes; exact totals, rounding and repayments reconcile and personal chart totals are unaffected. Manual assistive-technology and broad device/browser assessment remain phase 5 work.
 
 ## Phase 5 — MVP verification and handoff
 
 Depends on phases 1–4.
 
-- [ ] Run the cross-feature acceptance path against real PostgreSQL; check accessibility, narrow-screen charts, validation and error recovery.
-- [ ] Record lint, typecheck, tests and production-build results; document startup, migrations, configuration, backup/restore responsibilities and known limitations.
+- [x] Run local cross-feature acceptance against PostgreSQL: 40 Node tests, one HTTP lifecycle and eight Playwright cases, with WCAG scans, narrow-screen charts, validation and error recovery.
+- [x] Record lint/typecheck/build, schema/migration checks, runtime/development audit results and the two-case local-model benchmark in MVP_REVIEW/PROGRESS; document setup and known limits.
+- [ ] Complete manual screen-reader/inclusive-user checks, representative real receipts, physical phones and Firefox/WebKit assessment. Automated scans do not certify WCAG conformance.
 - [ ] Confirm deployment/runtime compatibility and production security settings before any separately authorized launch. Do not provision hosting or publish as part of planning.
 
 Exit: every MVP acceptance criterion has evidence, unresolved blockers are explicit, and the user receives a reviewable MVP. Deployment remains separately authorized.

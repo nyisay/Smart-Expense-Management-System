@@ -20,6 +20,10 @@ export const extractionSchema = z.strictObject({
 });
 
 export type ReceiptSuggestion = z.output<typeof extractionSchema>;
+export const previousReviewSchema = z.object({
+  suggestion: extractionSchema,
+  reviewKey: z.uuid(),
+});
 
 export function reviewSuggestion(
   input: unknown,

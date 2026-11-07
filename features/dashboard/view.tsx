@@ -87,6 +87,9 @@ export function DashboardView({ data }: { data: DashboardData }) {
         </Link>
         <div className="flex flex-wrap gap-2">
           <Button variant="ghost" size="sm" asChild>
+            <Link href="/groups">Groups</Link>
+          </Button>
+          <Button variant="ghost" size="sm" asChild>
             <Link href="/receipts/new">Upload receipt</Link>
           </Button>
           <Button variant="ghost" size="sm" asChild>
@@ -150,6 +153,7 @@ export function DashboardView({ data }: { data: DashboardData }) {
             </div>
           </div>
           <form
+            key={JSON.stringify(data.filters)}
             action="/dashboard"
             method="get"
             aria-label="Dashboard filters"

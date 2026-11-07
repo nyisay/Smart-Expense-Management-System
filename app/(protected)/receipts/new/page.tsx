@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { randomUUID } from "node:crypto";
 import { getCategories } from "@/features/transactions/queries";
 import { ReceiptUploadForm } from "@/features/receipts/upload-form";
 
@@ -24,7 +25,7 @@ export default async function ReceiptUploadPage() {
           Upload, review, then confirm. You control what gets saved.
         </p>
       </header>
-      <ReceiptUploadForm categories={categories} />
+      <ReceiptUploadForm key={randomUUID()} categories={categories} />
     </main>
   );
 }

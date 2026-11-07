@@ -1,6 +1,6 @@
 # Architecture
 
-Status: foundation, transactions, dashboard and local receipt extraction/review. Group/settlement flows are not implemented. See [DECISIONS.md](DECISIONS.md) for scope and [SETUP.md](SETUP.md) for commands and verification.
+Status: the local MVP is covered by integration and isolated desktop/mobile Playwright checks. The native capture mismatch is not fixed; the separately requested browser runner supplies automated UI evidence. See [MVP_REVIEW.md](MVP_REVIEW.md), [DECISIONS.md](DECISIONS.md) and [SETUP.md](SETUP.md) for scope, evidence and remaining gates.
 
 ## Runtime and structure
 
@@ -14,6 +14,7 @@ features/auth/              # Zod schemas, service, password hashing, throttles,
 features/transactions/      # schemas, owner-scoped store, session wrappers, actions, forms
 features/dashboard/         # filters, PostgreSQL aggregation, exact summaries, Recharts views
 features/receipts/          # image validation, local provider, suggestions, explicit review/save
+features/groups/            # exact allocations, owned group ledger, balances, forms/actions
 components/ui/              # official shadcn/ui primitives
 lib/                        # server env, Prisma singleton, exact money, ownership queries
 prisma/                     # schema, migrations, fixed category seed
@@ -35,11 +36,17 @@ shadcn/ui is initialized with the official CLI's Radix/nova preset and Tailwind 
 | `/transactions` | Owner-scoped list, URL filters, 20-row pagination |
 | `/transactions/new` | Income/expense creation with retry key |
 | `/receipts/new` | Protected temporary upload, local extraction and editable confirmation |
+| `/groups`, `/groups/new` | Owner-scoped group list and retry-safe creation with one self label |
+| `/groups/[groupId]` | Participants, all bills/shares, repayment history, balances and suggested repayments |
+| `/groups/[groupId]/members/new` | Add a named participant/guest |
+| `/groups/[groupId]/expenses/new` | One-payer bill with exact amount or percentage shares |
+| `/groups/[groupId]/expenses/[expenseId]/edit` | Atomic bill/share replacement with expected version |
+| `/groups/[groupId]/settlements/new` | Confirm and record an external repayment |
 | `/transactions/[id]` | Owned transaction detail and delete confirmation |
 | `/transactions/[id]/edit` | Owned transaction correction with version check |
 | `/api/auth/[...nextauth]` | Auth.js GET/POST protocol handlers, built-in CSRF |
 
-The protected layout reads the session inside Suspense; every data-access wrapper/action also authorizes independently. requireUser waits for a real request before Auth.js runs cryptographic operations. No shared caching of private data. Future receipt/group routes remain as described in REQUIREMENTS and TASKS.
+The protected layout reads the session inside Suspense; every data-access wrapper/action also authorizes independently. requireUser waits for a real request before Auth.js runs cryptographic operations. No shared caching of private data. The group detail includes a confirmed bill-delete action; group/member deletion and repayment correction/deletion are deferred.
 
 Transaction queries/actions resolve the session on the server and call an internal server-only store with that user ID. The store validates inputs with Zod, rejects missing/deleted principals, applies owner predicates to every financial operation, validates category/type pairs, and serializes amounts/dates for UI. Store principal arguments are for trusted server callers/tests, never request-supplied identity. Create/update/delete are exposed only through authenticated Server Actions with Next.js origin checks. There is no financial REST API.
 
@@ -54,6 +61,8 @@ A small pure server aggregation derives income, expenses, balance, category tota
 The default is the current calendar month in Asia/Yangon. Shortcuts cover this month, the current and previous five calendar months through today, and year to date; custom ranges are bounded to 120 calendar months for a readable, bounded chart. Clicking a donut slice or its keyboard-accessible category button navigates to a category-filtered dashboard URL; every section updates together. An expense-only category has zero income and a negative selected-range balance. Clicking the selected category again or clearing the filter restores all categories. View all links to the same date/category filters on the transaction list. Transaction mutations also revalidate /dashboard.
 
 Initial navigation has a skeleton, category transitions announce pending updates, and zero-expense ranges show meaningful empty charts with exact zero tables. Group expenses/settlements remain outside personal dashboard accounting. The original daily-trend proposal is superseded by the user's explicit monthly-trend request; no separate daily chart was added.
+
+Only the GET filter form is keyed by the selected filters, preserving the chart component and keyboard focus across category transitions. Pending category buttons use aria-disabled plus the existing selection guard; actual disabled controls would drop focus. Tooltips stack above the decorative donut label. Fresh creation forms use their server draft UUID as a React key to prevent successful cached drafts from reusing a submission identity; failed actions keep the same mounted controlled form and expected version.
 
 ## Database model
 
@@ -74,15 +83,25 @@ IDs are opaque UUIDs. Business dates use PostgreSQL date; created/updated timest
 
 User deletion and referenced member/category/group deletion are restricted while financial history exists. Expense deletion cascades its shares. Transaction/Receipt composite foreign keys reject cross-owner attachment; payer, share and settlement composite keys reject cross-group membership. A settlement cannot target its sender. Amount bounds/signs, positive versions, normalized emails and names are database-checked. Owner/date and foreign-key indexes support the planned queries.
 
-Deferred constraint triggers require share totals to equal their GroupExpense amount at commit. Parent-row locking serializes validation; an incomplete expense or mismatched share update rolls back. Create/correct expenses and all shares within one database transaction. Exactly one self member must be supplied by future group creation logic; the database currently enforces at most one. There is no group-creation endpoint in this foundation.
+Deferred constraint triggers require share totals to equal their GroupExpense amount at commit. Parent-row locking serializes validation; an incomplete expense or mismatched share update rolls back. Group creation atomically adds exactly one self label; the database enforces at most one. Bill creation/correction and all shares use one database transaction.
 
-Retry keys are unique per owner/group. Personal transaction retries and optimistic conflicts are implemented; group/settlement mutation services remain future work.
+Retry keys are unique per owner/group. Personal transaction, group expense and settlement retries compare persisted payloads before returning an existing result. Group/member creation uses stable client form UUIDs as identity, scoped to the authenticated owner/group when replayed. Expense edits/deletes require an expected version.
+
+## Group ledger and exact allocation
+
+Only the authenticated owner manages a group; participants/guests are named labels without login privileges. Server queries/actions derive the owner from requireUser; the server-only store verifies the persisted user and scopes group reads by id/ownerId. Every mutation locks that owned Group row before membership checks and ledger writes. This serializes operations within a group, handles concurrent create retries and avoids conflicting lock order during bill/share replacement. Payer/share/settlement members must all belong to that group; existing composite foreign keys provide an additional boundary.
+
+Money stays bigint/string in MMK. Amount shares are nonnegative whole kyat and sum exactly to a positive total. Percentages are parsed as integer basis points with up to two decimals and sum to 10000. Allocate floor(total × weight / 10000), then distribute the remaining kyat by descending remainder, ascending canonical member UUID on ties. The same pure function validates server input and previews exact amounts in React. Only allocated amounts persist; percentage-created bills reopen as exact amount splits. Maximum 50 participants; blank/unselected sharing can be represented by zero.
+
+Group detail reads the owner-scoped members, expenses/shares and repayments in one RepeatableRead transaction. A pure calculator derives paid, owed, sent, received and net = paid − owed + sent − received; all nets must sum to zero. A deterministic debtor/creditor matching pass creates advisory "who owes whom" amounts without writes. It does not claim a globally optimal number of transfers. Histories are loaded in full for this MVP; move aggregation/pagination to PostgreSQL when group histories grow large.
+
+Repayment confirmation records a positive completed external transfer between distinct participants, with a stable group submission key. Overpayments are allowed as actual recorded events and may reverse net balances. Editing/deleting a bill replaces/removes its shares but preserves repayment history. Settlements are append-only; correction/deletion is outside this slice and stated in the UI. No bill or repayment calls personal transaction creation or revalidates financial dashboard data; dashboard accounting remains unchanged. Group mutations revalidate /groups.
 
 ## Currency, dates, and accounting
 
 The user confirmed MMK / 0 decimals / Asia/Yangon. Currency is an enum with one value across financial models; changing the currency requires a separate reviewed schema/data migration, not an environment toggle. Store kyat as PostgreSQL BIGINT / Prisma bigint. Parse whole-unit decimal strings, enforce 1 through 9,000,000,000,000,000 kyat for positive amounts, allow zero only for shares, and serialize bigint as strings. Financial calculations never use floating point. A future chart may convert bounded coordinates only after exact aggregation; authoritative totals/labels stay exact.
 
-Calendar input dates must not shift with UTC conversion. Transaction form dates use validated calendar strings from 1900 onward and UTC-midnight database values; the default date is today in Asia/Yangon. Personal Transactions and group expenses remain separate ledgers. Future member net = paid expenses - owed shares + outgoing settlements - incoming settlements. All member nets must sum to zero. A recorded settlement adjusts obligations, not personal dashboard income/expenses or verified bank balances.
+Calendar input dates must not shift with UTC conversion. Transaction, group bill and repayment forms use validated calendar strings from 1900 onward and UTC-midnight database values; the default date is today in Asia/Yangon. Personal Transactions and group expenses remain separate ledgers. Member net = paid expenses - owed shares + outgoing settlements - incoming settlements. All member nets must sum to zero. A recorded settlement adjusts obligations, not personal dashboard income/expenses or verified bank balances.
 
 ## Authentication and authorization
 
@@ -104,6 +123,6 @@ The server-only ReceiptExtractor accepts prepared bytes and expense category IDs
 
 Zod checks all output and blanks uncertain/invalid fields. Currency never defaults to MMK; unsupported/unknown currency also blanks amount. React holds editable suggestions only in memory. A separately authenticated action validates explicit confirmation/currency and delegates to the existing owned EXPENSE creation path with a stable per-review UUID retry key. It ignores submitted identity by constructing only allowed fields, revalidates transactions/dashboard, and redirects to the saved transaction. Reviewed transaction fields are the sole persistence; Receipt metadata remains unused. No schema/migration change. Mock transport/service tests and real HTTP confirmation cover this boundary; real OCR quality is a manual prerequisite.
 
-Group/settlement forms, image retention and payment execution remain absent.
+Image retention, shared group-account access and payment execution remain absent.
 
 No hosting provider is selected or provisioned. Production TLS, trusted reverse proxy configuration, backups/restores and secrets management require verification before a separately authorized launch. Tests simulate HTTPS cookie behavior over loopback and cannot prove browser TLS or production infrastructure. SETUP.md records manual checks and official sources.

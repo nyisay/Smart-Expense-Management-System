@@ -1,14 +1,14 @@
 # Requirements
 
-Status: foundation, transactions and dashboard implemented; local Ollama receipt extraction/review authorized on 2026-11-07. Group/settlement workflows remain planned. See [DECISIONS.md](DECISIONS.md).
+Status: the implemented MVP has local integration, isolated desktop/mobile Playwright and automated accessibility verification. Representative real-receipt and manual assistive-technology/deployment checks remain open; see [MVP_REVIEW.md](MVP_REVIEW.md) and [DECISIONS.md](DECISIONS.md).
 
 ## Goal and boundaries
 
 Make personal spending easy to understand through clear, accurate visualizations. Support manual bookkeeping, receipt-assisted expense entry, and unequal group bills in one small application. Persist financial records in PostgreSQL through Prisma; use Auth.js JWT sessions for email/password authentication.
 
-Confirmed currency/reporting rules: MMK, whole kyat (0 decimal places), Asia/Yangon. The foundation uses owner-managed groups with named participants, one payer per group expense, and explicit owed shares; group records remain separate from personal transactions. Receipt metadata and Settlement models exist; receipt review saves only confirmed transaction fields. Group operations and settlement flows remain future work.
+Confirmed currency/reporting rules: MMK, whole kyat (0 decimal places), Asia/Yangon. Owner-managed groups use named participants, one payer per group expense and exact owed shares; group records remain separate from personal transactions. Receipt review saves only confirmed transaction fields. Recorded settlements represent money repaid outside the application.
 
-Defer bank connections, exchange rates, budgets, recurring entries, exports, payment execution, settlement recording UI, invitations, shared group editing, email verification, password recovery, and paid AI integrations. A Settlement model is schema preparation for a recorded external repayment; it does not execute a payment. Do not describe a member balance as a payment made or a bank balance.
+Defer bank connections, exchange rates, budgets, recurring entries, exports, payment execution, invitations, shared group editing, email verification, password recovery, and paid AI integrations. Settlement recording does not execute a payment. Do not describe a member balance as a payment made or a bank balance.
 
 ## Functional requirements and acceptance criteria
 
@@ -57,21 +57,25 @@ Acceptance:
 - No transaction is saved before explicit confirmation. Correcting fields and confirming saves exactly those validated values as one owner-scoped expense, with retry-safe creation and dashboard refresh.
 - API failures, invalid structured responses and unreadable input have safe errors, retry and a manual-entry link. Slow extraction has an announced pending state and a 120-second deadline; no fabricated progress percentage.
 - Reject unsupported MIME types, mismatched signatures, corrupt/animated images, uploads above 10 MiB and decoded images above 20 megapixels on the server. Strip metadata and send only decoded/re-encoded pixels to loopback Ollama.
-- No persistent pixels, raw OCR, unconfirmed metadata or sensitive logging. Upload/extraction/confirmation all require persisted authentication; provider settings are server-only. Leaving/reloading discards unsaved suggestions. No tokens or suggestions are stored in browser persistence.
+- No persistent pixels, raw OCR, unconfirmed metadata or sensitive logging. Upload/extraction/confirmation all require persisted authentication; provider settings are server-only. Reloading clears unsaved review state; SPA navigation may temporarily retain client form state under Cache Components. No tokens or suggestions are stored in localStorage/sessionStorage or server persistence before confirmation.
 - Invalid/ambiguous dates, totals and categories become null with review notices. Unknown/non-MMK currencies clear the amount; saving requires explicit MMK confirmation and positive whole kyat, with no implicit currency conversion.
 - Automated extraction tests use mocks, including ambiguous/missing output, failures and a corrected expense reaching real PostgreSQL/dashboard totals. Benchmark real non-sensitive receipts separately; no promise of perfect OCR or universal language support.
 
 ### FR-05 Groups and unequal bill splits
 
-The proposed MVP lets a signed-in owner create a group, name members (including one self member), and record bills with one payer and explicit per-member owed amounts. Members are labels, not accounts or invitees. The owner alone can read/manage the group. Support bill correction/deletion; defer deleting groups or members with history.
+The MVP lets a signed-in owner create a group, add up to 50 named participants including guests and exactly one self member, record multiple bills with one payer, and allocate uneven shares as exact whole-kyat amounts or percentages. Members are labels managed by the owner; they do not gain account access. The owner alone can read/manage the group. Support bill correction/deletion and recording completed external repayments; defer group/member deletion, invitations and settlement correction/deletion.
 
 Acceptance:
-- A 100.00 bill paid by A with shares A 20.00, B 30.00, C 50.00 yields balances A +80.00, B -30.00, C -50.00. Positive means is owed; negative means owes. All member balances sum to zero.
+- An MMK 100 bill paid by A with shares A 20, B 30, C 50 yields balances A +80, B -30, C -50. Positive means is owed; negative means owes. All member balances sum to zero.
 - Shares are nonnegative, at least one is positive, and their exact sum equals the bill total. Payer and every participant belong to the same group; each member appears at most once per bill.
 - Group detail shows members, bills, and paid/owed/net totals. Zero-share participants and a payer with zero owed share are supported.
 - Bill plus shares save atomically; invalid or failed writes leave neither an incomplete bill nor partial balances. Edits/deletions recompute balances correctly.
 - Group bills never implicitly change personal transactions or dashboard totals. The interface states this separation.
 - Unauthorized direct requests fail. Concurrent edits are rejected with a conflict instead of silently overwriting a newer bill.
+- Percentage inputs allow at most two decimal places and must sum to exactly 100.00%. Multiply total by integer basis points, floor each share, then assign leftover kyat by descending fractional remainder and ascending canonical participant UUID for ties. For MMK 101 at 50/25/25%, exact saved shares are 51/25/25. Zero-share participants never receive an arbitrary rounding charge.
+- Show paid, owed, repayments sent/received and net = paid − owed + sent − received, computed from every current bill and each recorded settlement exactly once. Suggest deterministic debtor-to-creditor repayments from these nets; suggestions never write financial records.
+- Explicitly confirm an external repayment with distinct same-group sender/receiver and a positive whole-kyat amount/date. Group/member/bill/repayment create retries must not duplicate records; changed payloads using an existing retry key fail. Overpayments are allowed as records of actual events and may reverse balances.
+- Editing/deleting bills preserves recorded repayments; recomputed balances may therefore reverse direction. Repayments are append-only in the MVP and the UI states this before confirmation. There is no money transfer or personal transaction side effect.
 
 ## MVP completion
 

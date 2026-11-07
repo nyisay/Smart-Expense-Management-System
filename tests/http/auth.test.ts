@@ -631,6 +631,299 @@ test(
         version: 1,
         confirmed: "yes",
       });
+      const groupNewPage = await (await request("/groups/new")).text();
+      assert.ok(groupNewPage.includes("Create a group"));
+      const groupForm = transactionForm(groupNewPage, {
+        name: "HTTP group trip",
+        selfName: "A",
+      });
+      const unsignedGroup = await request(
+        "/groups/new",
+        { method: "POST", headers: { origin: canonical }, body: groupForm },
+        new Map(),
+      );
+      assert.equal(unsignedGroup.status, 303);
+      const forgedGroup = await request("/groups/new", {
+        method: "POST",
+        headers: { origin: "https://evil.example" },
+        body: groupForm,
+      });
+      assert.equal(forgedGroup.status, 500);
+      const createdGroup = await request("/groups/new", {
+        method: "POST",
+        headers: { origin: canonical },
+        body: groupForm,
+      });
+      assert.equal(createdGroup.status, 303);
+      const groupPath = new URL(
+        createdGroup.headers.get("location")!,
+        canonical,
+      ).pathname;
+      const groupId = groupPath.split("/").at(-1)!;
+      await request("/groups/new", {
+        method: "POST",
+        headers: { origin: canonical },
+        body: groupForm,
+      });
+      assert.equal(
+        await prisma.group.count({ where: { ownerId: user.id } }),
+        1,
+      );
+      const hiddenGroup = await (await request(groupPath, {}, otherJar)).text();
+      assert.ok(hiddenGroup.includes("Group or bill not found"));
+      assert.equal(hiddenGroup.includes("HTTP group trip"), false);
+      assert.equal(
+        (await (await request("/groups", {}, otherJar)).text()).includes(
+          "HTTP group trip",
+        ),
+        false,
+      );
+      for (const name of ["B", "C"]) {
+        const memberPath = `${groupPath}/members/new`;
+        const memberPage = await (await request(memberPath)).text();
+        const memberForm = transactionForm(memberPage, { name });
+        const rejectedMember = await request(
+          memberPath,
+          { method: "POST", headers: { origin: canonical }, body: memberForm },
+          otherJar,
+        );
+        assert.equal(rejectedMember.status, 200);
+        assert.equal(
+          (await rejectedMember.text()).includes("Group or record unavailable"),
+          true,
+        );
+        assert.equal(
+          (
+            await request(memberPath, {
+              method: "POST",
+              headers: { origin: canonical },
+              body: memberForm,
+            })
+          ).status,
+          303,
+        );
+        await request(memberPath, {
+          method: "POST",
+          headers: { origin: canonical },
+          body: memberForm,
+        });
+      }
+      const groupMembers = await prisma.groupMember.findMany({
+        where: { groupId },
+      });
+      assert.equal(groupMembers.length, 3);
+      const memberA = groupMembers.find((member) => member.name === "A")!.id;
+      const memberB = groupMembers.find((member) => member.name === "B")!.id;
+      const memberC = groupMembers.find((member) => member.name === "C")!.id;
+      function billForm(
+        html: string,
+        values: Record<string, string>,
+        shares: string[],
+      ) {
+        const form = transactionForm(html, values);
+        form.delete("memberId");
+        form.delete("shareValue");
+        for (const [index, id] of [memberA, memberB, memberC].entries()) {
+          form.append("memberId", id);
+          form.append("shareValue", shares[index]);
+        }
+        return form;
+      }
+      const billPath = `${groupPath}/expenses/new`;
+      const billPage = await (await request(billPath)).text();
+      assert.ok(billPage.includes("Exact amounts (MMK)"));
+      assert.ok(billPage.includes("Percentages"));
+      const billFields = {
+        title: "HTTP group dinner",
+        amount: "100",
+        occurredOn: "2026-11-07",
+        payerMemberId: memberA,
+        mode: "AMOUNT",
+      };
+      const invalidBill = await request(billPath, {
+        method: "POST",
+        headers: { origin: canonical },
+        body: billForm(billPage, billFields, ["20", "30", "49"]),
+      });
+      assert.equal(invalidBill.status, 200);
+      assert.equal(await prisma.groupExpense.count({ where: { groupId } }), 0);
+      const validBill = billForm(billPage, billFields, ["20", "30", "50"]);
+      const deniedBill = await request(
+        billPath,
+        { method: "POST", headers: { origin: canonical }, body: validBill },
+        otherJar,
+      );
+      assert.equal(deniedBill.status, 200);
+      assert.equal(
+        (
+          await request(billPath, {
+            method: "POST",
+            headers: { origin: canonical },
+            body: validBill,
+          })
+        ).status,
+        303,
+      );
+      await request(billPath, {
+        method: "POST",
+        headers: { origin: canonical },
+        body: validBill,
+      });
+      assert.equal(await prisma.groupExpense.count({ where: { groupId } }), 1);
+      let groupHtml = await (await request(groupPath)).text();
+      assert.ok(
+        groupHtml.includes(`data-member-id="${memberA}" data-net="80"`),
+      );
+      assert.ok(
+        groupHtml.includes(`data-member-id="${memberB}" data-net="-30"`),
+      );
+      assert.ok(
+        groupHtml.includes(`data-member-id="${memberC}" data-net="-50"`),
+      );
+      assert.ok(groupHtml.includes("Who owes whom"));
+      assert.ok(groupHtml.includes("View exact shares"));
+      const groupBill = await prisma.groupExpense.findFirstOrThrow({
+        where: { groupId },
+      });
+      const billEditPath = `${groupPath}/expenses/${groupBill.id}/edit`;
+      const billEditPage = await (await request(billEditPath)).text();
+      const editedBill = billForm(
+        billEditPage,
+        { ...billFields, amount: "101", mode: "PERCENT" },
+        ["50", "25", "25"],
+      );
+      assert.equal(
+        (
+          await request(billEditPath, {
+            method: "POST",
+            headers: { origin: canonical },
+            body: editedBill,
+          })
+        ).status,
+        303,
+      );
+      const staleBill = await request(billEditPath, {
+        method: "POST",
+        headers: { origin: canonical },
+        body: editedBill,
+      });
+      assert.equal(staleBill.status, 200);
+      assert.equal(
+        (
+          await prisma.groupExpense.findUniqueOrThrow({
+            where: { id: groupBill.id },
+          })
+        ).version,
+        2,
+      );
+      const repaymentPath = `${groupPath}/settlements/new`;
+      const repaymentPage = await (await request(repaymentPath)).text();
+      const repaymentFields = {
+        fromMemberId: memberB,
+        toMemberId: memberA,
+        amount: "10",
+        occurredOn: "2026-11-07",
+        confirmed: "yes",
+      };
+      const repaymentForm = transactionForm(repaymentPage, repaymentFields);
+      assert.equal(
+        (
+          await request(repaymentPath, {
+            method: "POST",
+            headers: { origin: canonical },
+            body: transactionForm(repaymentPage, {
+              ...repaymentFields,
+              confirmed: "no",
+            }),
+          })
+        ).status,
+        200,
+      );
+      assert.equal(await prisma.settlement.count({ where: { groupId } }), 0);
+      assert.equal(
+        (
+          await request(
+            repaymentPath,
+            {
+              method: "POST",
+              headers: { origin: canonical },
+              body: repaymentForm,
+            },
+            otherJar,
+          )
+        ).status,
+        200,
+      );
+      assert.equal(
+        (
+          await request(repaymentPath, {
+            method: "POST",
+            headers: { origin: canonical },
+            body: repaymentForm,
+          })
+        ).status,
+        303,
+      );
+      await request(repaymentPath, {
+        method: "POST",
+        headers: { origin: canonical },
+        body: repaymentForm,
+      });
+      assert.equal(await prisma.settlement.count({ where: { groupId } }), 1);
+      groupHtml = await (await request(groupPath)).text();
+      assert.ok(
+        groupHtml.includes(`data-member-id="${memberA}" data-net="40"`),
+      );
+      assert.ok(
+        groupHtml.includes(`data-member-id="${memberB}" data-net="-15"`),
+      );
+      assert.ok(
+        groupHtml.includes(`data-member-id="${memberC}" data-net="-25"`),
+      );
+      assert.ok(groupHtml.includes('data-group-total="101"'));
+      assert.ok(
+        groupHtml.replace(/<!--[\s\S]*?-->/g, "").includes("B repaid A"),
+      );
+      assert.ok(
+        (await (await request(dashboardRange)).text()).includes(
+          'data-summary="expenses" data-amount="0"',
+        ),
+      );
+      assert.equal(
+        await prisma.transaction.count({ where: { ownerId: user.id } }),
+        0,
+      );
+      const deleteBillId = Object.entries(manifest.node).find(
+        ([, entry]) => entry.exportedName === "deleteExpenseAction",
+      )?.[0];
+      assert.ok(deleteBillId);
+      const deleteBillForm = new FormData();
+      for (const [key, value] of Object.entries({
+        groupId,
+        id: groupBill.id,
+        version: "2",
+        confirmed: "yes",
+      }))
+        deleteBillForm.set(key, value);
+      const deletedBill = await request(groupPath, {
+        method: "POST",
+        headers: { origin: canonical, "Next-Action": deleteBillId },
+        body: await encodeReply([{ message: "" }, deleteBillForm]),
+      });
+      assert.ok(
+        deletedBill.headers.get("x-action-redirect")?.startsWith(groupPath),
+      );
+      assert.equal(await prisma.groupExpense.count({ where: { groupId } }), 0);
+      assert.equal(await prisma.settlement.count({ where: { groupId } }), 1);
+      const afterBillDeletion = await (await request(groupPath)).text();
+      assert.ok(
+        afterBillDeletion.includes(
+          `data-member-id="${memberA}" data-net="-10"`,
+        ),
+      );
+      assert.ok(
+        afterBillDeletion.includes(`data-member-id="${memberB}" data-net="10"`),
+      );
       const tampered = new Map(jar);
       tampered.set("__Secure-authjs.session-token", "tampered");
       assert.equal(
@@ -671,6 +964,22 @@ test(
         csrfToken: await csrf(),
       });
       assert.equal(jar.has("__Secure-authjs.session-token"), true);
+      // Remove this test account's group ledger before checking deleted-user sessions.
+      const testGroups = await prisma.group.findMany({
+        where: { ownerId: user.id },
+        select: { id: true },
+      });
+      const testGroupIds = testGroups.map((group) => group.id);
+      await prisma.settlement.deleteMany({
+        where: { groupId: { in: testGroupIds } },
+      });
+      await prisma.groupExpense.deleteMany({
+        where: { groupId: { in: testGroupIds } },
+      });
+      await prisma.groupMember.deleteMany({
+        where: { groupId: { in: testGroupIds } },
+      });
+      await prisma.group.deleteMany({ where: { id: { in: testGroupIds } } });
       await prisma.user.delete({ where: { id: user.id } });
       assert.equal(
         await (await request("/api/auth/session")).json(),
@@ -708,6 +1017,23 @@ test(
       }
       await prisma.transaction.deleteMany({
         where: { ownerId: { in: [user.id, other.id] } },
+      });
+      const remainingGroups = await prisma.group.findMany({
+        where: { ownerId: { in: [user.id, other.id] } },
+        select: { id: true },
+      });
+      const remainingGroupIds = remainingGroups.map((group) => group.id);
+      await prisma.settlement.deleteMany({
+        where: { groupId: { in: remainingGroupIds } },
+      });
+      await prisma.groupExpense.deleteMany({
+        where: { groupId: { in: remainingGroupIds } },
+      });
+      await prisma.groupMember.deleteMany({
+        where: { groupId: { in: remainingGroupIds } },
+      });
+      await prisma.group.deleteMany({
+        where: { id: { in: remainingGroupIds } },
       });
       await prisma.user.deleteMany({
         where: { id: { in: [user.id, other.id] } },

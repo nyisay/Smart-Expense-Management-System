@@ -22,13 +22,21 @@ Why: keeps precision exact and rejects mixed-currency sums. Tradeoff: deliberate
 
 ## D-03 — Financial model names and boundaries
 
-Status: Revised and accepted for schema preparation by the user's explicit model list, 2026-11-06.
+Status: Accepted for the schema on 2026-11-06; group UI, percentage/amount splits and recorded repayments explicitly authorized in the subsequent Smart Group Splitting request (implemented 2026-11-08).
 
 Define User, Category, Transaction, Receipt, Group, GroupMember, GroupExpense, ExpenseShare and Settlement. GroupExpense/ExpenseShare replace the initial proposed Bill/BillShare names. Add AuthThrottle as the authentication support table. Owner-managed member labels and a separate group ledger follow the existing planned scope; collaboration/invitations remain absent.
 
-Receipt stores owner-linked metadata only; no image storage, raw OCR text or processing flow. Settlement records an external repayment between distinct members of the same group. Its model is included now, superseding the earlier proposal to defer the model; recording UI and financial write services remain future work. No settlement changes personal transaction totals.
+Receipt stores owner-linked metadata only; receipt extraction/review is covered by D-04. Settlement records an external repayment between distinct members of the same group. Group services now record repayments; no settlement changes personal transaction totals or moves money.
 
-Tradeoff: schema preparation is available without building those features. Same-group/owner foreign keys, amount checks and deferred share-total validation protect future writes, but future services still need authorization, retry-payload checks and optimistic conflict handling.
+Owner-managed participants, including guests, remain labels without account access. The new request authorizes these existing boundaries, not shared editing/invitations. Group creation adds exactly one self label; groups use MMK/0/Asia/Yangon. Existing same-group/owner foreign keys, amount checks and deferred share-total checks remain authoritative; no schema migration or dependency is needed for this milestone.
+
+Amount shares must exactly match the bill. Percentages use up to two decimals, integer basis points totaling 10000, and largest-remainder allocation with canonical member UUID tie-breaking. Only resulting exact kyat shares persist; editing a percentage-created bill starts from its saved amount shares. A shared pure calculator powers server validation, preview and tests.
+
+Every public query/action resolves the persisted authenticated owner. Group-row locks serialize member, expense and settlement mutations; bill/share replacement is atomic and version-checked. Creation uses stable UUID identity (group/member) or existing group submission keys (bills/settlements), matching persisted payloads on retries. Balances are recomputed from one RepeatableRead snapshot; no cached balance counters or duplicated personal transactions. Suggested repayments use deterministic debtor/creditor matching and are not a promise of globally minimal transfer count.
+
+Repayments record completed external events and are append-only in this MVP. Positive amounts beyond current debt are allowed and may reverse obligations; editing/deleting bills retains those historical repayments. No bank/payment integration, group/member deletion or settlement correction UI. Up to 50 participants are supported; full ledger loading is a documented MVP limit for future pagination/SQL aggregation.
+
+At the group implementation handoff the user selected "Keep live UI testing pending until capture is fixed" after native capture/input targeting was rejected. The later final-review request explicitly authorizes Playwright E2E tests. Isolated Chromium now provides desktop/mobile browser, screenshot and keyboard evidence independently of the personal browser; the native mismatch itself remains unfixed and manual assistive-technology checks remain open.
 
 ## D-04 — Receipt OCR and retention
 
@@ -46,7 +54,7 @@ PostgreSQL accepts IPv4 but times out on IPv6. Prisma's schema engine failed on 
 
 ## Approval boundary
 
-The foundation, transaction milestone, dashboard and local receipt extraction/review are authorized. Group management and settlement UI remain unimplemented. Ask before changing currency/accounting, adding shared account membership, retaining images, changing the auth/session strategy, introducing paid/remote extraction services, destructive data changes or deployment.
+Foundation, transactions, dashboard, local receipt review, owner-managed group splitting and external repayment recording are authorized. Ask before changing currency/accounting, adding shared account membership, retaining images, changing the auth/session strategy, introducing paid/remote extraction services, destructive data changes or deployment.
 
 ## Transaction milestone — 2026-11-06
 
@@ -55,3 +63,7 @@ The user explicitly requested transaction create/view/edit/delete, filtering, pa
 ## Dashboard milestone — 2026-11-06
 
 The user explicitly requested Recharts/shadcn visualization, summary cards, interactive expense categories, monthly trends, date ranges, recent transactions and aggregation tests. Monthly buckets supersede the initial daily-trend proposal. The current calendar month remains the default. Category selection scopes every dashboard section consistently, including income/balance; the UI explains the expense-only meaning and offers clearing/switching categories. Server-side parameterized PostgreSQL grouping and exact integer arithmetic preserve the approved accounting rules. No schema/currency/session-strategy change or runtime demo data is introduced. Browser-only visual/interaction verification remains manual because the browser access host was unavailable.
+
+## Final quality review — 2026-11-08
+
+The user requests a final MVP quality review, implementation-defect fixes, integration/Playwright tests, responsiveness/accessibility verification and a prioritized remaining-issues report, with no deployment/push. Test-only Playwright/axe and in-memory self-signed TLS tooling support an isolated production-server/browser harness. shadcn 4.23.0 remains the same version and is now pinned as build/development tooling; Prisma/Next/Auth.js versions, currency, ownership and JWT strategy are unchanged. Browser/state/focus/contrast fixes do not expand product scope. AUTH_URL now enforces the documented origin-only contract. See MVP_REVIEW for executed evidence, the limited synthetic Ollama benchmark and remaining release/manual gates.

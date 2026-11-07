@@ -38,5 +38,5 @@ export default async function DashboardPage({
       </main>
     );
   const data = await getDashboard(parsed.data);
-  return <DashboardView key={JSON.stringify(data.filters)} data={data} />;
+  return <DashboardView data={data} />;
 }

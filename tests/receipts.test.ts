@@ -9,7 +9,10 @@ import {
   MAX_RECEIPT_BYTES,
 } from "../features/receipts/image";
 import { ollamaExtractor } from "../features/receipts/provider";
-import { reviewSuggestion } from "../features/receipts/schemas";
+import {
+  reviewSuggestion,
+  previousReviewSchema,
+} from "../features/receipts/schemas";
 import { extractReceipt, confirmReceipt } from "../features/receipts/service";
 import { loadDashboard } from "../features/dashboard/store";
 import { findTransaction } from "../features/transactions/store";
@@ -88,7 +91,9 @@ test("receipt upload decodes JPG/PNG/WebP and strips metadata; rejects MIME, siz
   await assert.rejects(prepareReceiptImage(file(large)));
   const tooManyPixels = await sharp({
     create: { width: 5000, height: 4001, channels: 3, background: "white" },
-  }).png().toBuffer();
+  })
+    .png()
+    .toBuffer();
   await assert.rejects(prepareReceiptImage(file(tooManyPixels)));
   const animation = await sharp(
     Buffer.concat([Buffer.alloc(12, 255), Buffer.alloc(12, 0)]),
@@ -101,6 +106,23 @@ test("receipt upload decodes JPG/PNG/WebP and strips metadata; rejects MIME, siz
 });
 
 test("receipt suggestions flag ambiguity, missing/invalid dates, unknown categories and unsupported currencies without inventing values", () => {
+  const previous = { suggestion: raw(), reviewKey: randomUUID() };
+  assert.deepEqual(
+    previousReviewSchema.parse({ ...previous, unexpected: "not reflected" }),
+    previous,
+  );
+  assert.equal(
+    previousReviewSchema.safeParse({ ...previous, reviewKey: "invalid" })
+      .success,
+    false,
+  );
+  assert.equal(
+    previousReviewSchema.safeParse({
+      ...previous,
+      suggestion: { ...raw(), merchant: "x".repeat(201) },
+    }).success,
+    false,
+  );
   const valid = reviewSuggestion(raw(), [categoryId]);
   assert.deepEqual(valid.uncertain, []);
   const ambiguous = reviewSuggestion(

@@ -135,6 +135,7 @@ export function DashboardCharts({ data }: { data: ChartData }) {
                         ))}
                       </Pie>
                       <Tooltip
+                        wrapperStyle={{ zIndex: 20 }}
                         allowEscapeViewBox={{ x: false, y: false }}
                         content={({ active, payload }) => {
                           const category = data.categories.find(
@@ -185,12 +186,12 @@ export function DashboardCharts({ data }: { data: ChartData }) {
                         <th scope="row" className="py-2 font-normal">
                           <button
                             type="button"
-                            disabled={pending}
+                            aria-disabled={pending}
                             aria-pressed={
                               data.filters.categoryId === category.id
                             }
                             onClick={() => select(category.id)}
-                            className="inline-flex items-center gap-2 rounded px-1 py-2 text-left text-sm underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-50"
+                            className="inline-flex items-center gap-2 rounded px-1 py-2 text-left text-sm underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring aria-disabled:opacity-50"
                           >
                             <span
                               className="size-2.5 shrink-0 rounded-full"

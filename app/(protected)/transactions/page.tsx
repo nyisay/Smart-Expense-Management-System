@@ -157,7 +157,7 @@ export default async function TransactionsPage({
                       <Button variant="outline" asChild>
                         <Link
                           href={`/transactions/${record.id}`}
-                          aria-label={`View ${record.merchant || record.categoryName} on ${record.occurredOn}`}
+                          aria-label={`View details for ${record.merchant || record.categoryName} on ${record.occurredOn}`}
                         >
                           View details
                         </Link>
@@ -238,7 +238,7 @@ export default async function TransactionsPage({
                         <Button size="sm" variant="ghost" asChild>
                           <Link
                             href={`/transactions/${record.id}`}
-                            aria-label={`View ${record.merchant || record.categoryName} on ${record.occurredOn}`}
+                            aria-label={`View details for ${record.merchant || record.categoryName} on ${record.occurredOn}`}
                           >
                             View
                           </Link>

@@ -39,6 +39,31 @@ The dashboard reads only the authenticated user's PostgreSQL transactions. Choos
 
 Select an expense category by clicking its donut slice, activating its category table button with the keyboard, or using the category filter. This applies to every card, both charts and recent entries; income becomes zero in an expense-only category, and balance remains selected income minus selected expenses. Clear the category to restore all categories. View all opens the transaction list with matching dates/category. All totals, tooltips and exact-value tables use whole MMK. Group bills/settlements are excluded. A new account has meaningful zero and empty states without runtime sample data.
 
+### Smart Group Splitting
+
+Open `/groups` from Groups in the dashboard. No new dependency, migration, sample data or API key is required; the existing Group/GroupMember/GroupExpense/ExpenseShare/Settlement schema is used. Everything in this section is MMK/whole kyat with Asia/Yangon calendar dates.
+
+Create a group and choose your participant name. The owner is the only authorized account; named participants, including guests, do not need accounts and cannot access the group themselves. Add unique participant names (case-insensitive within the group), up to 50 total. Group/member deletion and invitations are deferred.
+
+Add group expense, enter a positive bill total/date, choose its one payer, then allocate either exact whole-kyat amounts totaling the bill or percentages totaling exactly 100%. Percentages allow two decimal places. Zero means that participant owes no share. Switching split mode resets entered shares; review the exact preview before saving. Percentage rounding uses integer basis points and largest remainders, with canonical participant UUID tie-breaking: MMK 101 split 50/25/25% saves 51/25/25. Saved percentage bills reopen as exact amounts because only final shares are stored.
+
+Group detail shows all expenses and exact shares, paid/owed/repaid/received/net per participant, and suggested "who owes whom" repayments. Suggestions are derived from the current complete ledger and do not save records. Positive net means is owed; negative means owes. Group bills and repayments never create personal transactions or affect dashboard totals.
+
+Record repayment only after money has been repaid outside the app. Choose sender/receiver, amount/date and explicitly confirm. Records are append-only in this MVP: there is no repayment edit/delete UI, so check direction/amount before saving. Overpayments may reverse obligations. Editing/deleting a bill keeps repayments in history and recalculates balances; this can also reverse who owes whom. The app never sends money. Group/member/bill/repayment creates are retry-safe; bill corrections/deletion reject stale versions. Form values and retry/version identity are preserved on errors in the interactive React flow.
+
+Manual group checklist — standard flows now have separate desktop/360px Playwright evidence in MVP_REVIEW. These boxes remain manual repetitions/edge assessments; native capture itself is not fixed:
+
+- [ ] At `/groups`, create a disposable test group with self A and guests B/C. Confirm another account cannot see its list/detail/forms or mutate it by copied IDs.
+- [ ] Add a bill of MMK 100 paid by A with A/B/C shares 20/30/50. Expect net A +80, B −30, C −50 and B/C owing A. Check exact shares, all labels and initial/empty/error states.
+- [ ] Record B repaying A 10. Expect +70/−20/−50; retry the same submission and confirm one repayment. Confirm personal dashboard totals do not change.
+- [ ] Edit that bill to MMK 101 with percentages 50/25/25. Expect exact shares 51/25/25 and, with the recorded repayment, net +40/−15/−25. Reload to confirm persistence. Try an edit from an older tab and verify a conflict rather than an overwrite.
+- [ ] Reject percentages 33.33/33.33/33.33 (99.99%), mismatched amount totals, negative shares, zero/fractional bill totals, invalid dates and same sender/receiver. Permit a zero share and a payer who owes zero. Verify entered values stay on validation failure.
+- [ ] Add further bills with different payers and partial repayments; check zero-sum nets and updated suggestions. Record only disposable test repayments; ordinary financial records are not demo data.
+- [ ] On the disposable group, confirm bill deletion removes its shares but keeps its repayment: net becomes −10/+10/0 for the sequence above. Cancellation must leave the bill unchanged.
+- [ ] Manually assess long participant names, zoom, physical devices and assistive technologies. Standard desktop/360px overflow, keyboard controls, percentage preview and confirmations pass the isolated Chromium suite; this is not a manual screen-reader claim.
+
+The current MVP loads a full group ledger in one RepeatableRead snapshot; aggregation/history pagination should be added when histories become large. Suggested matching is deterministic and reconciles balances but does not promise the smallest possible transfer count.
+
 ### Receipt upload and local extraction
 
 Open `/receipts/new` from Upload receipt on the dashboard or the new transaction page. Install [Ollama for Windows](https://ollama.com/download/windows) if needed. Do not expose port 11434 publicly. Quit the tray application before starting a separate CLI server; only one Ollama server should bind the port.
@@ -60,11 +85,11 @@ Alternatively set OLLAMA_NO_CLOUD=1 in Windows user environment variables and re
 
 Keep `OLLAMA_BASE_URL` / `OLLAMA_MODEL` in the server `.env` only if overriding their defaults. Start Next.js normally with `npm.cmd run dev` in another terminal, sign in and open `/receipts/new`. The application server and Ollama must share the same trusted host; remote/container hosting needs a separately reviewed setup. The adapter follows Ollama's current [chat API](https://docs.ollama.com/api/chat), [base64 vision input](https://docs.ollama.com/capabilities/vision), and [JSON-schema structured outputs](https://docs.ollama.com/capabilities/structured-outputs).
 
-Uploads accept static JPG/PNG/WebP up to 10 MiB and 20 megapixels. The server checks MIME/signatures, fully decodes with Sharp, strips metadata and resizes to at most 2400px per side. It sends pixels only to loopback Ollama, with no disk/database image storage, raw OCR logging or retained suggestions. Only explicitly confirmed transaction fields are saved; the Receipt metadata table is not used by this flow. Unsaved suggestions disappear on reload/navigation. Operators must also avoid sensitive proxy/Ollama debug logging and protect host memory/crash dumps.
+Uploads accept static JPG/PNG/WebP up to 10 MiB and 20 megapixels. The server checks MIME/signatures, fully decodes with Sharp, strips metadata and resizes to at most 2400px per side. It sends pixels only to loopback Ollama, with no disk/database image storage, raw OCR logging or server-retained suggestions. Only explicitly confirmed transaction fields are saved; the Receipt metadata table is not used by this flow. Reloading clears unsaved review state; SPA navigation can temporarily retain form state in browser memory. No localStorage/sessionStorage persistence is used. Operators must also avoid sensitive proxy/Ollama debug logging and protect host memory/crash dumps.
 
 Review merchant, final total, date, currency and category. Unknown/uncertain values are blank and flagged; unsupported/unknown currency also clears the amount. Only positive whole-kyat MMK expenses can be confirmed. The app never converts currencies. Correcting a review field clears the confirmation checkbox. Saving uses the existing owner-scoped retry-safe expense path and refreshes dashboard totals. Validation/save failures retain entered values in the hydrated React form. No-JavaScript progressive form behavior is not a substitute for the supported interactive React review flow.
 
-Extraction has an announced pending state, a two-minute timeout, bounded output and five attempts per authenticated user per 15 minutes (500 global). Retries and invalid uploads count toward the limit; ordinary manual entry remains available. Unavailable Ollama/model, bad output or corrupt/unsupported images produce safe errors and a manual-entry link. Leaving the page discards the review but does not guarantee immediate cancellation of already-running inference; it is bounded by the timeout. There is no background queue.
+Extraction has an announced pending state, a two-minute timeout, bounded output and five attempts per authenticated user per 15 minutes (500 global). Retries and invalid uploads count toward the limit; ordinary manual entry remains available. Unavailable Ollama/model, bad output or corrupt/unsupported images produce safe errors and a manual-entry link. A failed replacement upload keeps the existing review/corrections; confirmation is disabled during extraction. Navigation does not guarantee immediate cancellation of already-running inference; it is bounded by the timeout. There is no background queue.
 
 Automated tests mock both the extraction service and Ollama HTTP responses; they need no model, API key or paid calls. Real recognition accuracy, latency, peak memory and narrow-screen/keyboard behavior remain manual checks. The application is not a certified receipt/accounting extraction system; ambiguous totals and dates must be verified by the user even if the model fails to flag them.
 
@@ -97,6 +122,35 @@ The committed migrations were generated with `prisma migrate diff --from-empty -
 For a new schema change, generate and review a new migration; never edit already-applied migration SQL. Generate the client after schema changes. Protect backups and verify restores before production use; deployment and destructive data maintenance remain separately authorized.
 
 ## Automated checks
+
+### Playwright browser verification
+
+Install the pinned dependencies and Chromium once, then test against a current production build:
+
+```powershell
+npm.cmd ci
+npm.cmd exec -- playwright install chromium
+npm.cmd run build
+npm.cmd run test:e2e
+```
+
+The runner requires a localhost PostgreSQL URL targeting smart_expense_db or a database ending `_test`; it rejects other hosts/names without showing credentials. Keep ports 3195, 3196 and 3198 free. It starts its own production Next server, an HTTPS loopback proxy with an ephemeral self-signed certificate/auth secret, and a mock Ollama service. Browser certificate errors are ignored only inside this isolated test context; no Windows trust settings or normal application auth protections change. Port 3000 and personal browser tabs are not used. Tests run serially at 1366×900 and 360×800 with real UI registration, expenses, dashboard filters/updates, receipt review and group splitting/repayments.
+
+Test accounts use random `e2e-…@example.invalid` identities; teardown removes only that exact fixture's records using parameterized SQL. Run all database suites against development data, never a production database. Screenshots under `test-results/` contain generated fixture data and are Git-ignored. Trace/video recording is off to avoid persisting cookies or authentication inputs. The test-only certificate generator, Playwright and axe are development dependencies. A normal CI run must install development dependencies before building; shadcn's CSS tooling is also a build dependency, not needed by the built application runtime.
+
+The new `tests/environment.test.ts` checks canonical origin validation. Full results, fixes, benchmark evidence and prioritized remaining issues are in [MVP_REVIEW.md](MVP_REVIEW.md). The earlier native capture problem is not fixed or bypassed; the requested Playwright tests use a separately launched browser and synthetic data.
+
+### Optional real local-model benchmark
+
+With local-only Ollama running and `gemma3:4b` installed:
+
+```powershell
+npm.cmd run test:receipt:local
+```
+
+This opt-in command generates two synthetic English receipt images in memory, calls only loopback Ollama, and reports field-match booleans and elapsed time. It does not print raw extraction output, save receipt images, or call paid services. It is deliberately separate from deterministic unit/HTTP/Playwright suites. Passing it is not a representative real-receipt accuracy claim.
+
+Group tests cover exact and percentage splits, deterministic remainder/tie handling, zero shares/bill rejection, invalid totals/precision, multiple bills, partial/full/overpayments, repayment-plan reconciliation, 50-participant limits, retry races, atomic bill correction, optimistic conflicts, cross-owner/same-group authorization and personal-dashboard isolation. HTTP checks submit the rendered group/member/bill/repayment forms, exercise amount/percentage edits, confirmation refusal/retries/ownership/origin protection, and verify updated balances. Bill deletion is exercised via the pinned Flight transport. All group fixtures belong to uniquely named temporary test users and are removed without resetting existing user data. These are HTTP form checks, not a live browser UI pass.
 
 Run against a disposable development database, never production. Tests create uniquely named temporary users and financial fixtures, then remove only those fixtures. Rate-limit counters are short-lived and expire after 15 minutes. Seed categories before tests. Tests do not reset the database or delete existing user records.
 

@@ -9,6 +9,7 @@ export const metadata = { title: "New transaction | Smart Expense" };
 
 export default async function NewTransactionPage() {
   const categories = await getCategories();
+  const submissionKey = randomUUID();
   return (
     <main className="mx-auto w-full max-w-2xl space-y-6 px-4 py-8 sm:px-6 sm:py-12">
       <Link
@@ -34,8 +35,9 @@ export default async function NewTransactionPage() {
       <Card>
         <CardContent className="pt-6">
           <TransactionForm
+            key={submissionKey}
             categories={categories}
-            submissionKey={randomUUID()}
+            submissionKey={submissionKey}
             today={todayInReportingTimezone()}
           />
         </CardContent>
