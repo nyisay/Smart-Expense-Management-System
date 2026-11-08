@@ -6,11 +6,33 @@ Status: the implemented MVP has local integration, isolated desktop/mobile Playw
 
 Make personal spending easy to understand through clear, accurate visualizations. Support manual bookkeeping, receipt-assisted expense entry, and unequal group bills in one small application. Persist financial records in PostgreSQL through Prisma; use Auth.js JWT sessions for email/password authentication.
 
+Presentation: the user subsequently requested a premium Dark Base/Frosted Glass workspace on 2026-11-08 (D-06), superseding the earlier light-default glass theme. Provide persisted appearance selection, a collapsible desktop sidebar and focus-managed mobile drawer, active links, profile/logout controls and no dead routes. Analytics and Settings reuse existing dashboard/account views. Preserve chart readability, exact data, responsive layouts, keyboard access and contrast; support reduced transparency/motion, no-blur fallbacks and forced colors. [UI_THEME.md](UI_THEME.md) records the design and verification approach.
+
 Confirmed currency/reporting rules: MMK, whole kyat (0 decimal places), Asia/Yangon. Owner-managed groups use named participants, one payer per group expense and exact owed shares; group records remain separate from personal transactions. Receipt review saves only confirmed transaction fields. Recorded settlements represent money repaid outside the application.
 
-Defer bank connections, exchange rates, budgets, recurring entries, exports, payment execution, invitations, shared group editing, email verification, password recovery, and paid AI integrations. Settlement recording does not execute a payment. Do not describe a member balance as a payment made or a bank balance.
+Defer bank connections, exchange rates, recurring entries, exports, payment execution, invitations, shared group editing, email verification, password recovery, and paid AI integrations. Monthly budgets, advanced analytics/filtering and rule-based insights are authorized by D-05. Settlement recording does not execute a payment. Do not describe a member balance as a payment made or a bank balance.
 
 ## Functional requirements and acceptance criteria
+
+### FR-06 Monthly category budgets
+
+- An authenticated user can set, edit and remove a positive whole-MMK expense-category limit for an independent calendar month. No rollover or prorating; unset means unbudgeted.
+- Show full-month personal spending, limit, remaining amount and overspend with exact numbers. Progress bars have a name and numeric value; overspend remains explicit beyond the visual 100% cap. Warn at 80% and distinguish reached/overspent limits.
+- Group expenses/settlements never contribute. Confirmed receipt expenses contribute once through personal transactions. Removing a budget preserves transactions.
+- Reject unauthenticated/cross-owner operations, income categories, invalid months/limits and stale edits, including removed/recreated row identities. A retried identical create does not duplicate the limit.
+
+### FR-07 Advanced analytics and deterministic insights
+
+- Show monthly income/expense bars and net cash-flow trend with exact accessible tables/tooltips and zero-filled months. Every section shares the dashboard's date/category predicates.
+- Compare calendar months, aligned month-to-date or immediately preceding equal-length custom ranges under D-05. Include exact absolute changes and explicit period labels. Suppress conclusions for future-ending ranges and insufficient prior recorded history.
+- Show largest selected expense category, expense change, and signed cash-flow savings rate `(income − expenses) / income`. Zero income and zero previous expense have explicit unavailable percentage states. Do not imply bank savings or complete history.
+- Full-month budget notices share the aggregation snapshot and category scope. Partial/multi-month dashboard ranges link to full-month budgets without prorating or mixing totals. No external AI is required.
+
+### FR-08 Advanced transaction filters
+
+- Combine literal case-insensitive merchant/note search, inclusive exact minimum/maximum MMK, type, category and inclusive dates. Reject malformed, fractional, negative, reversed or excessive bounds; zero is a valid search boundary.
+- Count and paginated records share the same owner/filter predicate and snapshot. Keep filters through pagination, detail, edit/cancel/save and deletion. Validate internal navigation destinations on the server.
+- Empty and invalid filters have recovery links; responsive forms retain submitted valid filters. Search is at most 100 characters; pagination remains 20 records.
 
 ### FR-01 Authentication and isolation
 
@@ -59,6 +81,8 @@ Acceptance:
 - Reject unsupported MIME types, mismatched signatures, corrupt/animated images, uploads above 10 MiB and decoded images above 20 megapixels on the server. Strip metadata and send only decoded/re-encoded pixels to loopback Ollama.
 - No persistent pixels, raw OCR, unconfirmed metadata or sensitive logging. Upload/extraction/confirmation all require persisted authentication; provider settings are server-only. Reloading clears unsaved review state; SPA navigation may temporarily retain client form state under Cache Components. No tokens or suggestions are stored in localStorage/sessionStorage or server persistence before confirmation.
 - Invalid/ambiguous dates, totals and categories become null with review notices. Unknown/non-MMK currencies clear the amount; saving requires explicit MMK confirmation and positive whole kyat, with no implicit currency conversion.
+- Explicit receipt labels MMK/MMKs/MKKS, Ks/Ks., kyat/kyats and ကျပ်/က်ပ္ normalize to MMK. Recognize Myanmar digits, valid comma/space thousands groups and one/two zero decimal places without rounding; reject malformed/ambiguous grouping, nonzero fractions and unknown currencies. Manual transaction input remains strict whole-kyat digits.
+- Show a collapsible browser-only selected-image preview for comparing printed fields. Revoke preview URLs when replaced/deactivated; do not upload a preview through image optimization or persist it. Explain that failed replacement extraction retains the previous review.
 - Automated extraction tests use mocks, including ambiguous/missing output, failures and a corrected expense reaching real PostgreSQL/dashboard totals. Benchmark real non-sensitive receipts separately; no promise of perfect OCR or universal language support.
 
 ### FR-05 Groups and unequal bill splits

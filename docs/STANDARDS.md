@@ -22,6 +22,8 @@ Applies when implementation is authorized. [REQUIREMENTS.md](REQUIREMENTS.md) ow
 
 ## Visualization and accessibility
 
+The application uses the shared UI UX Pro Max Dark Base/Frosted Glass themes described in [UI_THEME.md](UI_THEME.md), superseding the earlier light default under D-06. Reuse semantic tokens, the shared application shell and panels/controls; keep chart marks/tooltips legible, and preserve reduced-transparency/motion, forced-colors and no-blur fallbacks. Store only appearance preferences in browser storage; authentication remains server-managed.
+
 - Keep visualization primary: legible cards, clear categories, monthly trends, consistent date/category filters, useful loading/empty/error states, and currency-aware exact labels.
 - Use Recharts with a bounded responsive container. Charts must have text/table equivalents and visible labels/legends; never rely solely on color or hover.
 - Use semantic controls, associated labels, keyboard operation, visible focus, accessible errors, and adequate contrast. Check mobile layouts at 360px and desktop widths.

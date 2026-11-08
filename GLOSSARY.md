@@ -4,6 +4,14 @@ Personal bookkeeping and owner-managed shared-expense tracking.
 
 ## Language
 
+**Monthly category budget**:
+A personal expense-category spending limit for one calendar month. Months are independent; an unset limit is unbudgeted and unused allowance does not roll forward.
+_Avoid_: Account balance, recurring payment
+
+**Cash-flow savings rate**:
+Recorded personal income minus recorded personal expenses, divided by that income for the selected period and category scope. It is undefined when selected income is zero and does not measure bank savings.
+_Avoid_: Bank savings rate
+
 **Transaction**:
 A personal income or expense entry belonging to one user. Group expenses and repayments are separate records.
 _Avoid_: Bank transaction

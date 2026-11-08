@@ -1,5 +1,27 @@
 # Decision log
 
+## D-06 — Dark workspace shell and two appearance themes
+
+Status: Accepted by the user's explicit dark/frosted redesign request on 2026-11-08. This supersedes the earlier light-default glass presentation decision because the user now requests two dark variants and persistent sidebar navigation. Accounting, routes, models, authentication and extraction decisions are unchanged.
+
+Default to Dark Base; Frosted Glass adds restrained translucent surfaces and ambient color with the same typography/layout. Central CSS tokens control both. Store only the appearance preference in browser localStorage; an early fixed inline script applies a recognized theme before paint, with a safe default if storage is unavailable. No authentication material is stored there.
+
+Place the shared shell inside the existing authenticated protected layout. Use installed Radix Dialog/Tooltip/DropdownMenu and existing shadcn buttons/selects; a shadcn Sidebar file was not present, so no new component package or dependency is required. Preserve independent server authorization in every existing operation. Desktop uses a reserved collapsible grid column; mobile uses a focus-managed drawer. Analytics links to the existing dashboard analytics anchor; Settings links to the existing `/app` account/appearance view. No empty standalone feature page or dead navigation link is introduced.
+
+Keep financial charts and values sourced from existing queries. Reorder presentation, add the already-computed savings rate to summary cards and present recent entries as a desktop table/mobile list. Both variants retain exact labels/tables, accessible controls, reduced motion/transparency, opaque no-blur fallbacks and forced-color support. No new financial behavior, paid provider, deployment, push or commit is authorized by this presentation milestone.
+
+## D-05 — Budgets, analytics, ledger search and rule-based insights
+
+Status: Accepted through the user's request to improve these four features on 2026-11-08. The user explicitly selected “Independent monthly budgets; no rollover” and “Aligned calendar months; equal-length custom ranges” in the follow-up answers.
+
+Add one owner/category/calendar-month Budget with a positive exact whole-MMK limit. No rollover or prorating. An absent limit means unbudgeted, not zero. Actuals include the entire selected calendar month of personal expenses, including reviewed receipt transactions, excluding group records. Removing a limit never removes transactions. Use optimistic versions, stable row identity and a database uniqueness constraint. This additive schema change preserves existing records and accounting decisions.
+
+Dashboard monthly income/expense/net buckets share authenticated PostgreSQL aggregation and date/category filters. Calendar-month views compare with the previous calendar month; month-to-date aligns through the same day, clamped to the previous month's last day. Other custom ranges compare with the immediately preceding equal number of inclusive calendar days. Suppress conclusions for future-ending ranges, absent earlier history or no prior-period records. Disclose that recorded entries do not prove complete history.
+
+Ledger search matches literal, case-insensitive merchant/note text up to 100 characters. Inclusive amount bounds accept exact nonnegative whole MMK within the existing entry limit. Preserve validated filter/page context through list, detail, edit, cancel, save and delete. Reconstruct internal return URLs from validated known fields.
+
+Insights use deterministic arithmetic: largest expense category, signed cash-flow savings rate, comparable expense change and budget threshold notices. Savings rate is unavailable with zero selected income; relative expense change is unavailable with zero prior expenses. Budget warnings begin at 80%, with reached/overspent states. Dashboard notices share the category scope and snapshot only for a full single month; partial/multi-month ranges link to full-month budgeting. No scheduled notifications, AI provider, bank-balance claims or new dependency is introduced. Other audit roadmap items retain their approval gates.
+
 The user's 2026-11-06 request explicitly authorizes database models, migration and authentication implementation, while excluding dashboard and receipt features. Their follow-up confirms MMK / 0 decimals / Asia/Yangon. Earlier planning-only restrictions are superseded for this scope. Future architectural changes still need approval.
 
 ## D-01 — Single application and authentication foundation
@@ -47,6 +69,10 @@ This supersedes the browser OCR proposal. Authenticated Server Actions accept st
 The server-only ReceiptExtractor function is the provider seam. Zod validates structured output; missing, uncertain, invalid dates/categories and non-whole-kyat totals become null for review. Unknown/non-MMK currency clears the suggested amount; no currency is assumed or converted. Reviewed fields must be explicitly confirmed with currency MMK before the existing owner-scoped, exact-money, retry-safe expense creation path runs. Saving persists only reviewed transaction fields; the optional Receipt metadata model remains unused, avoiding redundant suggestions and additional retention. All suggestions/images are otherwise transient; no migration is needed.
 
 Tradeoffs: the model/runtime download and suitable local hardware are prerequisites. A 120-second timeout, 64 KiB response cap, 1024-token generation cap and shared five-per-user/500-global attempts per 15 minutes bound extraction; there is no queue or background job. App requests/logs do not retain images or raw output. Operating-system memory, operator-configured Ollama/debug logs and crash dumps remain the host operator's responsibility. Real receipt accuracy/performance and browser visual checks require separate manual verification; mocks do not prove OCR quality.
+
+## Receipt precision follow-up — 2026-11-08
+
+The user explicitly requested more accurate receipt upload/extraction and recognition that “ks” means kyat/MMK (their “mkks” spelling is accepted as an explicit receipt alias). This authorizes the bounded receipt fix, not the unapproved audit roadmap. Keep the same local Ollama provider/model, MMK/0/Asia/Yangon, privacy boundaries and explicit confirmation. Normalize only clear currency labels and exact printed numeric formatting; ambiguous values remain null rather than estimated. Add an in-memory source preview and targeted regressions. No currency/schema/session/provider change or image retention is approved or introduced.
 
 ## Implementation note — Local migrations
 

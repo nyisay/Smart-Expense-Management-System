@@ -10,6 +10,7 @@ import {
 import { TransactionFiltersForm } from "@/features/transactions/filters";
 import { transactionFiltersSchema } from "@/features/transactions/schemas";
 import { formatAmount } from "@/lib/money";
+import { transactionListHref, transactionDetailHref } from "@/features/transactions/navigation";
 
 export const metadata = { title: "Transactions | Smart Expense" };
 
@@ -26,8 +27,8 @@ export default async function TransactionsPage({
       <main className="mx-auto w-full max-w-6xl p-6 py-12">
         <h1 className="text-3xl font-semibold">Transactions</h1>
         <p role="alert" className="my-5">
-          These filters are invalid. Choose valid dates, categories, types and
-          page numbers.
+          These filters are invalid. Check dates, categories, types, search length,
+          whole-MMK amount bounds and page numbers.
         </p>
         <Button asChild>
           <Link href="/transactions">Reset filters</Link>
@@ -36,6 +37,7 @@ export default async function TransactionsPage({
     );
   const filters = parsed.data;
   const result = await getTransactionList(filters);
+  const returnTo = transactionListHref({ ...filters, page: result.page });
   const pageLink = (page: number) => {
     const params = new URLSearchParams();
     for (const [key, value] of Object.entries(filters))
@@ -47,7 +49,7 @@ export default async function TransactionsPage({
     filters.type ||
     filters.categoryId ||
     filters.from ||
-    filters.to
+    filters.to || filters.q || filters.minAmount !== undefined || filters.maxAmount !== undefined
   );
   return (
     <main className="mx-auto w-full max-w-6xl space-y-7 px-4 py-8 sm:px-8 sm:py-12">
@@ -116,7 +118,7 @@ export default async function TransactionsPage({
               </h3>
               <p className="max-w-sm text-sm text-muted-foreground">
                 {hasFilters
-                  ? "Try a different date range, type or category."
+                  ? "Try different dates, type, category, search text or amount bounds."
                   : "Add your first income or expense to keep your records in one place."}
               </p>
               <Button variant="outline" asChild>
@@ -156,7 +158,7 @@ export default async function TransactionsPage({
                       </span>
                       <Button variant="outline" asChild>
                         <Link
-                          href={`/transactions/${record.id}`}
+                          href={transactionDetailHref(record.id, returnTo)}
                           aria-label={`View details for ${record.merchant || record.categoryName} on ${record.occurredOn}`}
                         >
                           View details
@@ -237,7 +239,7 @@ export default async function TransactionsPage({
                       <td className="px-5 py-4 text-right">
                         <Button size="sm" variant="ghost" asChild>
                           <Link
-                            href={`/transactions/${record.id}`}
+                            href={transactionDetailHref(record.id, returnTo)}
                             aria-label={`View details for ${record.merchant || record.categoryName} on ${record.occurredOn}`}
                           >
                             View

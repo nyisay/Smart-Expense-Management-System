@@ -1,9 +1,10 @@
 import { Suspense } from "react";
 import { requireUser } from "@/features/auth/session";
+import { ApplicationShell } from "@/components/application-shell";
 
 async function ProtectedContent({ children }: { children: React.ReactNode }) {
-  await requireUser();
-  return children;
+  const user = await requireUser();
+  return <ApplicationShell user={{ name: user.name, email: user.email }}>{children}</ApplicationShell>;
 }
 
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/features/auth/session";
 import * as store from "./store";
+import { safeReturnTo, transactionDetailHref } from "./navigation";
 
 export type TransactionFormState = {
   message: string;
@@ -54,6 +55,7 @@ export async function createTransactionAction(
   }
   revalidatePath("/transactions", "layout");
   revalidatePath("/dashboard");
+  revalidatePath("/budgets");
   redirect(`/transactions/${id}?saved=created`);
 }
 
@@ -74,7 +76,8 @@ export async function editTransactionAction(
   }
   revalidatePath("/transactions", "layout");
   revalidatePath("/dashboard");
-  redirect(`/transactions/${id}?saved=updated`);
+  revalidatePath("/budgets");
+  redirect(transactionDetailHref(String(id), safeReturnTo(form.get("returnTo")), "updated"));
 }
 
 export async function deleteTransactionAction(
@@ -93,5 +96,8 @@ export async function deleteTransactionAction(
   }
   revalidatePath("/transactions", "layout");
   revalidatePath("/dashboard");
-  redirect("/transactions?deleted=yes");
+  revalidatePath("/budgets");
+  const destination = new URL(safeReturnTo(form.get("returnTo")), "http://localhost");
+  destination.searchParams.set("deleted", "yes");
+  redirect(`${destination.pathname}${destination.search}`);
 }

@@ -85,6 +85,13 @@ export async function listTransactions(userId: unknown, input: unknown) {
     ownerId: owner,
     type: filters.type,
     categoryId: filters.categoryId,
+    amountMinor: {
+      gte: filters.minAmount === undefined ? undefined : BigInt(filters.minAmount),
+      lte: filters.maxAmount === undefined ? undefined : BigInt(filters.maxAmount),
+    },
+    OR: filters.q ? ["merchant", "note"].map((field) => ({
+      [field]: { contains: filters.q!.replace(/[\\%_]/g, "\\$&"), mode: "insensitive" as const },
+    })) : undefined,
     occurredOn: {
       gte: filters.from ? toDatabaseDate(filters.from) : undefined,
       lte: filters.to ? toDatabaseDate(filters.to) : undefined,

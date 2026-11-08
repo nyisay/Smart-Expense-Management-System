@@ -28,12 +28,12 @@ import { expensePercentage } from "./aggregate";
 import type { DashboardData } from "./store";
 
 const COLORS = [
-  "#2563eb",
-  "#0d9488",
-  "#9333ea",
-  "#d97706",
-  "#db2777",
-  "#475569",
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
+  "var(--chart-6)",
 ];
 const compact = (value: number) =>
   new Intl.NumberFormat("en", {
@@ -306,7 +306,7 @@ export function DashboardCharts({ data }: { data: ChartData }) {
                     <Bar
                       dataKey="value"
                       name="Expenses"
-                      fill="#2563eb"
+                      fill="var(--chart-1)"
                       radius={[5, 5, 0, 0]}
                       maxBarSize={56}
                       isAnimationActive={false}

@@ -148,6 +148,7 @@ export function GroupDetail({ group }: { group: GroupView }) {
                   className="break-words text-xl font-semibold"
                   data-member-id={balance.id}
                   data-net={balance.net}
+                  style={{ color: BigInt(balance.net) > BigInt(0) ? "var(--positive)" : BigInt(balance.net) < BigInt(0) ? "var(--negative)" : "var(--muted-foreground)" }}
                 >
                   {formatAmount(balance.net)}
                   <span className="ml-2 text-xs font-normal text-muted-foreground">

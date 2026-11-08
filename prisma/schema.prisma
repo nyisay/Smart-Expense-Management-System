@@ -26,6 +26,7 @@ model User {
   transactions Transaction[]
   receipts     Receipt[]
   groups       Group[]
+  budgets      Budget[]
 }
 
 model Category {
@@ -35,8 +36,27 @@ model Category {
   type         TransactionType
   transactions Transaction[]
   receipts     Receipt[]
+  budgets      Budget[]
 
   @@unique([id, type])
+}
+
+model Budget {
+  id           String          @id @default(uuid()) @db.Uuid
+  ownerId      String          @db.Uuid
+  categoryId   String          @db.Uuid
+  categoryType TransactionType @default(EXPENSE)
+  month        DateTime        @db.Date
+  limitMinor   BigInt
+  currency     Currency        @default(MMK)
+  version      Int             @default(1)
+  createdAt    DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime        @updatedAt @db.Timestamptz(3)
+  owner        User            @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  category     Category        @relation(fields: [categoryId, categoryType], references: [id, type], onDelete: Restrict)
+
+  @@unique([ownerId, categoryId, month])
+  @@index([ownerId, month])
 }
 
 model Transaction {

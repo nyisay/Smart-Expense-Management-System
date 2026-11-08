@@ -24,7 +24,7 @@ export function TransactionFiltersForm({
     <form
       action="/transactions"
       method="get"
-      className="grid items-end gap-4 sm:grid-cols-2 lg:grid-cols-[1fr_1.4fr_1fr_1fr_auto]"
+      className="grid items-end gap-4 sm:grid-cols-2 lg:grid-cols-4"
       aria-label="Filter transactions"
     >
       <div className="space-y-2">
@@ -84,6 +84,18 @@ export function TransactionFiltersForm({
           max="9999-12-31"
           defaultValue={filters.to ?? ""}
         />
+      </div>
+      <div className="space-y-2 sm:col-span-2">
+        <Label htmlFor="filter-q">Search merchant or note</Label>
+        <Input id="filter-q" name="q" maxLength={100} defaultValue={filters.q ?? ""} />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="filter-min">Minimum (MMK)</Label>
+        <Input id="filter-min" name="minAmount" inputMode="numeric" pattern="[0-9]+" maxLength={16} defaultValue={filters.minAmount ?? ""} />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="filter-max">Maximum (MMK)</Label>
+        <Input id="filter-max" name="maxAmount" inputMode="numeric" pattern="[0-9]+" maxLength={16} defaultValue={filters.maxAmount ?? ""} />
       </div>
       <div className="flex gap-2">
         <Button type="submit">Apply</Button>

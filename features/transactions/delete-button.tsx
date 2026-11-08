@@ -18,9 +18,11 @@ import { deleteTransactionAction } from "./actions";
 export function DeleteTransactionButton({
   id,
   version,
+  returnTo = "/transactions",
 }: {
   id: string;
   version: number;
+  returnTo?: string;
 }) {
   const [state, action, pending] = useActionState(deleteTransactionAction, {
     message: "",
@@ -50,6 +52,7 @@ export function DeleteTransactionButton({
           <input type="hidden" name="id" value={id} />
           <input type="hidden" name="version" value={version} />
           <input type="hidden" name="confirmed" value="yes" />
+          <input type="hidden" name="returnTo" value={returnTo} />
           {state.message && (
             <p role="alert" className="text-sm text-destructive">
               {state.message}

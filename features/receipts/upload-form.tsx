@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -158,7 +158,7 @@ function ReviewForm({
                     </NativeSelectOption>
                   )}
                   <NativeSelectOption value="MMK">
-                    MMK — whole kyat
+                    MMK (Ks) — whole kyat
                   </NativeSelectOption>
                 </NativeSelect>
                 {error("currency")}
@@ -252,6 +252,18 @@ export function ReceiptUploadForm({
     { message: "" },
     "/receipts/new",
   );
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const preview = useRef<HTMLImageElement>(null);
+  useEffect(() => {
+    const element = preview.current;
+    if (!selectedImage || !element) return;
+    const url = URL.createObjectURL(selectedImage);
+    element.src = url;
+    return () => {
+      element.removeAttribute("src");
+      URL.revokeObjectURL(url);
+    };
+  }, [selectedImage]);
   return (
     <div className="space-y-6">
       <Card>
@@ -259,7 +271,7 @@ export function ReceiptUploadForm({
           <CardTitle>1. Upload a receipt</CardTitle>
         </CardHeader>
         <CardContent>
-          <form action={action} className="space-y-4">
+          <form action={action} className="space-y-4 rounded-xl border border-dashed border-input bg-muted/20 p-4 sm:p-6">
             <Label htmlFor="receipt-image">Receipt image</Label>
             <Input
               id="receipt-image"
@@ -268,7 +280,12 @@ export function ReceiptUploadForm({
               accept="image/jpeg,image/png,image/webp"
               required
               disabled={pending}
-              aria-describedby="receipt-limits"
+              aria-describedby="receipt-limits receipt-photo-help"
+              onChange={(event) => {
+                const image = event.target.files?.[0];
+                setSelectedImage(image && image.size <= 10 * 1024 * 1024 &&
+                  ["image/jpeg", "image/png", "image/webp"].includes(image.type) ? image : null);
+              }}
             />
             <p id="receipt-limits" className="text-sm text-muted-foreground">
               JPG, PNG or WebP. Maximum 10 MiB and 20 megapixels; static images
@@ -276,6 +293,35 @@ export function ReceiptUploadForm({
               Ollama and are not stored. Suggestions stay in this page until
               confirmed; reloading discards them.
             </p>
+            <p id="receipt-photo-help" className="text-sm text-muted-foreground">
+              Use a sharp, well-lit photo. Crop away the background, keep the
+              receipt straight, and include the merchant, date and final total.
+              Ks / kyat means MMK; unclear amounts still need your correction.
+            </p>
+            {selectedImage && (
+              <details open className="rounded-xl border bg-muted/30 p-3">
+                <summary className="cursor-pointer rounded font-medium focus-visible:outline-2 focus-visible:outline-ring">
+                  Selected image preview
+                </summary>
+                <figure className="mt-3">
+                  <div
+                    role="region"
+                    aria-label="Selected receipt image preview"
+                    tabIndex={0}
+                    className="max-h-96 overflow-auto rounded-lg border bg-background focus-visible:outline-2 focus-visible:outline-ring"
+                  >
+                    {/* Browser-only blob preview; never send private pixels through image optimization. */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img ref={preview} alt="Selected receipt for checking extracted fields" className="h-auto w-full" />
+                  </div>
+                  <figcaption className="mt-2 text-xs text-muted-foreground">
+                    Check every digit before confirming. A new image does not
+                    replace existing review values until extraction succeeds.
+                    Collapse this preview to reach the review fields.
+                  </figcaption>
+                </figure>
+              </details>
+            )}
             <div className="flex flex-wrap gap-3">
               <Button type="submit" disabled={pending}>
                 {pending

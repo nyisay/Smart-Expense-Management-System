@@ -50,6 +50,7 @@ export async function removeTestAccount(email: string) {
       await db.query('DELETE FROM "Group" WHERE "ownerId" = $1', [id]);
       await db.query('DELETE FROM "Transaction" WHERE "ownerId" = $1', [id]);
       await db.query('DELETE FROM "Receipt" WHERE "ownerId" = $1', [id]);
+      await db.query('DELETE FROM "Budget" WHERE "ownerId" = $1', [id]);
       await db.query('DELETE FROM "User" WHERE id = $1', [id]);
     }
     await db.query("COMMIT");

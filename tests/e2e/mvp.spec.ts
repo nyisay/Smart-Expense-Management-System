@@ -20,6 +20,59 @@ const test = base.extend<{ account: { email: string; password: string } }>({
   },
 });
 
+test("advanced filters survive transaction editing and deletion", async ({ page, account }) => {
+  await registerAndLogin(page, account);
+  await createTransaction(page, "EXPENSE", "150", "Food", "Search shop");
+  await page.goto("/transactions");
+  await page.getByLabel("Search merchant or note").fill("search");
+  await page.getByLabel("Minimum (MMK)").fill("100");
+  await page.getByLabel("Maximum (MMK)").fill("200");
+  await page.getByRole("button", { name: "Apply", exact: true }).click();
+  await expect(page.getByText("1 transaction", { exact: true })).toBeVisible();
+  await accessibleAndFits(page);
+  const filtered = new URL(page.url()).searchParams;
+  await page.getByRole("link", { name: /View details for Search shop/ }).filter({ visible: true }).click();
+  await page.getByRole("link", { name: "Edit transaction", exact: true }).click();
+  await page.getByLabel("Amount (MMK)", { exact: true }).fill("180");
+  await page.getByRole("button", { name: "Save changes", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("updated");
+  await page.getByRole("link", { name: "Back to transactions", exact: true }).click();
+  await expect(page).toHaveURL((url) => url.pathname === "/transactions" && url.searchParams.get("q") === filtered.get("q"));
+  await expect(page.getByLabel("Minimum (MMK)")).toHaveValue("100");
+  await page.getByRole("link", { name: /View details for Search shop/ }).filter({ visible: true }).click();
+  await page.getByRole("button", { name: "Delete", exact: true }).click();
+  await page.getByRole("button", { name: "Delete permanently", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "No matching transactions" })).toBeVisible();
+  await expect(page.getByLabel("Search merchant or note")).toHaveValue("search");
+});
+
+test("cash flow comparisons and rule-based insights reconcile recorded amounts", async ({ page, account }, testInfo) => {
+  await registerAndLogin(page, account);
+  await createTransaction(page, "INCOME", "1", "Salary", "History", "2025-09-01");
+  await createTransaction(page, "INCOME", "800", "Salary", "Previous income", "2025-10-01");
+  await createTransaction(page, "EXPENSE", "200", "Food", "Previous expense", "2025-10-08");
+  await createTransaction(page, "INCOME", "1000", "Salary", "Current income", "2025-11-01");
+  await createTransaction(page, "EXPENSE", "300", "Food", "Current expense", "2025-11-08");
+  await page.goto("/budgets?month=2025-11");
+  await page.getByLabel("Food monthly limit (MMK)", { exact: true }).fill("250");
+  await page.getByRole("button", { name: "Save Food budget", exact: true }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Budget updated" })).toBeVisible();
+  await page.goto("/dashboard?from=2025-11-01&to=2025-11-30");
+  await expect(page.getByText("70.0%", { exact: true })).toBeVisible();
+  await expect(page.getByText(/Food: overspent by MMK/)).toContainText("50");
+  await expect(page.getByText(/MMK\s*100 \(50.0%\)/)).toBeVisible();
+  await page.getByText("View exact cash flow amounts", { exact: true }).click();
+  const table = page.getByRole("region", { name: "Exact monthly cash flow table", exact: true });
+  await expect(table).toContainText("1,000");
+  await expect(table).toContainText("300");
+  await expect(table).toContainText("700");
+  await accessibleAndFits(page);
+  await page.screenshot({ path: testInfo.outputPath("analytics-insights.png"), fullPage: true });
+  await page.goto("/dashboard?from=2025-11-01&to=2025-11-08");
+  await expect(page.getByText("Budget notices require one full calendar month.", { exact: false })).toBeVisible();
+  await expect(page.getByText("Same days of previous month:", { exact: false })).toContainText("2025-10-08");
+});
+
 async function registerAndLogin(
   page: Page,
   account: { email: string; password: string },
@@ -67,6 +120,89 @@ async function registerAndLogin(
   ).toBeVisible();
 }
 
+async function setDarkTheme(page: Page, enabled: boolean) {
+  await page.evaluate(async (dark) => {
+    document.documentElement.dataset.theme = dark ? "frosted" : "dark";
+    window.dispatchEvent(new Event("expense-theme"));
+    await new Promise(requestAnimationFrame);
+    await Promise.all(
+      document.getAnimations()
+        .filter((animation) => animation instanceof CSSTransition)
+        .map((animation) => animation.finished.catch(() => {})),
+    );
+  }, enabled);
+}
+
+async function workspaceNavigate(page: Page, name: string) {
+  await expect(page.locator(".app-shell")).toBeVisible();
+  const trigger = page.getByRole("button", { name: "Open navigation", exact: true });
+  if (await trigger.isVisible()) await trigger.click();
+  await page.getByRole("link", { name, exact: true }).filter({ visible: true }).click();
+}
+
+test("workspace navigation, themes, collapse and mobile drawer preserve existing pages", async ({ page, account }, testInfo) => {
+  await registerAndLogin(page, account);
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  const mobile = testInfo.project.name.includes("mobile");
+  if (!mobile) {
+    await page.getByRole("button", { name: "Collapse sidebar", exact: true }).click();
+    await expect(page.locator(".app-shell")).toHaveAttribute("data-collapsed", "true");
+    await page.getByRole("link", { name: "Transactions", exact: true }).focus();
+    await expect(page.getByRole("tooltip")).toContainText("Transactions");
+    await page.getByRole("button", { name: "Expand sidebar", exact: true }).click();
+  } else {
+    await page.getByRole("button", { name: "Open navigation" }).click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await accessibleAndFits(page);
+    await page.screenshot({ path: testInfo.outputPath("mobile-navigation.png"), fullPage: true });
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Open navigation" })).toBeFocused();
+  }
+  await workspaceNavigate(page, "Budgets");
+  await expect(page.getByRole("heading", { name: "Monthly category budgets" })).toBeVisible();
+  if (mobile) await page.getByRole("button", { name: "Open navigation" }).click();
+  await expect(page.getByRole("link", { name: "Budgets", exact: true }).filter({ visible: true })).toHaveAttribute("aria-current", "page");
+  if (mobile) await page.keyboard.press("Escape");
+  await workspaceNavigate(page, "Settings");
+  await expect(page.getByRole("heading", { name: "Account settings" })).toBeVisible();
+  await page.getByRole("main").getByLabel("Appearance", { exact: true }).selectOption("frosted");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "frosted");
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "frosted");
+  await expect(page.getByRole("main").getByLabel("Appearance", { exact: true })).toHaveValue("frosted");
+  await accessibleAndFits(page);
+  await workspaceNavigate(page, "Analytics");
+  await expect(page).toHaveURL(/\/dashboard#analytics$/);
+  await page.goto("/dashboard?from=2025-11-01&to=2025-11-08");
+  await workspaceNavigate(page, "Analytics");
+  await expect(page).toHaveURL((url) => url.pathname === "/dashboard" && url.hash === "#analytics" && url.searchParams.get("from") === "2025-11-01" && url.searchParams.get("to") === "2025-11-08");
+  await expect(page.getByRole("heading", { name: "Income, expenses and net cash flow" })).toBeVisible();
+  await page.goto("/transactions/new");
+  await page.getByLabel("Amount (MMK)", { exact: true }).fill("12345");
+  await page.getByRole("button", { name: "Open profile menu" }).click();
+  await expect(page.getByRole("menuitem", { name: "Account & appearance" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByLabel("Amount (MMK)", { exact: true })).toHaveValue("12345");
+  await accessibleAndFits(page);
+  await page.screenshot({ path: testInfo.outputPath("workspace-frosted.png"), fullPage: true });
+  await workspaceNavigate(page, "Settings");
+  await page.getByRole("main").getByLabel("Appearance", { exact: true }).selectOption("dark");
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  if (mobile) {
+    for (const viewport of [{ width: 768, height: 1024 }, { width: 800, height: 360 }]) {
+      await page.setViewportSize(viewport);
+      await page.getByRole("button", { name: "Open navigation" }).click();
+      await accessibleAndFits(page);
+      await page.getByRole("button", { name: "Log out", exact: true }).scrollIntoViewIfNeeded();
+      await expect(page.getByRole("button", { name: "Log out", exact: true })).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(page.getByRole("dialog")).toHaveCount(0);
+    }
+  }
+});
+
 async function accessibleAndFits(page: Page) {
   await test.step(`Accessibility and width: ${new URL(page.url()).pathname}`, async () => {
     await expect(page.locator("main:visible")).toHaveCount(1);
@@ -76,15 +212,29 @@ async function accessibleAndFits(page: Page) {
         () => document.documentElement.scrollWidth <= window.innerWidth,
       ),
     ).toBe(true);
-    const result = await new AxeBuilder({ page })
-      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
-      .analyze();
-    expect(
-      result.violations.map((violation) => ({
-        id: violation.id,
-        targets: violation.nodes.map((node) => node.target),
-      })),
-    ).toEqual([]);
+    const wasDark = await page.evaluate(() =>
+      document.documentElement.dataset.theme === "frosted",
+    );
+    try {
+      for (const dark of [false, true]) {
+        await setDarkTheme(page, dark);
+        const result = await new AxeBuilder({ page })
+          .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+          .analyze();
+        expect(
+          result.violations.map((violation) => ({
+            theme: dark ? "frosted" : "dark",
+            id: violation.id,
+            targets: violation.nodes.map((node) => ({
+              target: node.target,
+              summary: node.failureSummary,
+            })),
+          })),
+        ).toEqual([]);
+      }
+    } finally {
+      await setDarkTheme(page, wasDark);
+    }
   });
 }
 
@@ -94,6 +244,7 @@ async function createTransaction(
   amount: string,
   category: string,
   merchant: string,
+  occurredOn = date,
 ) {
   if (
     await page
@@ -131,7 +282,7 @@ async function createTransaction(
     .getByRole("main")
     .getByLabel("Date", { exact: true })
     .filter({ visible: true })
-    .fill(date);
+    .fill(occurredOn);
   await page
     .getByRole("main")
     .getByLabel("Merchant or source")
@@ -151,6 +302,7 @@ test("registration, secure session, expenses, chart interaction, edit/delete and
   await page.goto("/dashboard");
   await expect(page).toHaveURL(/\/login$/);
   await accessibleAndFits(page);
+  await page.screenshot({ path: testInfo.outputPath("login.png"), fullPage: true });
   await page
     .getByRole("link", { name: "Create an account", exact: true })
     .click();
@@ -215,13 +367,16 @@ test("registration, secure session, expenses, chart interaction, edit/delete and
   };
   await donut.hover({ position: point });
   await expect(
-    page.getByRole("main").locator(".recharts-tooltip-wrapper").first(),
+    page.getByRole("group", { name: "Expense category donut chart", exact: true }).locator(".recharts-tooltip-wrapper"),
   ).toBeVisible();
   await accessibleAndFits(page);
   await page.screenshot({
     path: testInfo.outputPath("dashboard.png"),
     fullPage: true,
   });
+  await setDarkTheme(page, true);
+  await page.screenshot({ path: testInfo.outputPath("dashboard-dark.png"), fullPage: true });
+  await setDarkTheme(page, false);
   await donut.click({ position: point });
   await expect(
     page.getByRole("button", { name: "Food", exact: true }),
@@ -263,9 +418,6 @@ test("registration, secure session, expenses, chart interaction, edit/delete and
   await page.getByRole("button", { name: "Delete", exact: true }).click();
   await expect(page.getByRole("alertdialog")).toBeVisible();
   await accessibleAndFits(page);
-  await page.evaluate(() => document.documentElement.classList.add("dark"));
-  await accessibleAndFits(page);
-  await page.evaluate(() => document.documentElement.classList.remove("dark"));
   await page
     .getByRole("button", { name: "Keep transaction", exact: true })
     .click();
@@ -305,9 +457,18 @@ async function mockScenario(mode: string) {
   expect(response.ok).toBe(true);
 }
 async function uploadReceipt(page: Page) {
-  const image = await sharp({
-    create: { width: 80, height: 120, channels: 3, background: "white" },
-  })
+  const image = await sharp(Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="600" height="1100">
+    <rect width="600" height="1100" fill="white"/>
+    <g fill="black" font-family="sans-serif" font-size="28">
+      <text x="24" y="60">SYNTHETIC RECEIPT</text>
+      <text x="24" y="130">Synthetic receipt shop</text>
+      <text x="24" y="200">Date: 2026-11-08</text>
+      <text x="24" y="270">Meal: Ks 15,000.00</text>
+      <text x="24" y="340">Tax: Ks 3,000.00</text>
+      <text x="24" y="760">FINAL TOTAL: Ks 18,000.00</text>
+      <text x="24" y="840">Cash: Ks 20,000.00</text>
+      <text x="24" y="920">Change: Ks 2,000.00</text>
+    </g></svg>`))
     .png()
     .toBuffer();
   await page
@@ -329,7 +490,7 @@ test("receipt validation, uncertainty, editable review, explicit save and dashbo
   account,
 }, testInfo) => {
   await registerAndLogin(page, account);
-  await page.getByRole("link", { name: "Upload receipt", exact: true }).click();
+  await workspaceNavigate(page, "Receipt Scanner");
   await accessibleAndFits(page);
   await page
     .getByRole("main")
@@ -348,8 +509,24 @@ test("receipt validation, uncertainty, editable review, explicit save and dashbo
       exact: true,
     }),
   ).toBeVisible();
+  await mockScenario("normal");
+  await uploadReceipt(page);
+  await expect(page.getByRole("main").getByLabel("Final total (whole kyat)", { exact: true })).toHaveValue("12500");
+  await expect(page.getByRole("main").getByLabel("Currency", { exact: true })).toHaveValue("MMK");
+  const receiptPreview = page.getByRole("img", { name: "Selected receipt for checking extracted fields" });
+  await expect(receiptPreview).toBeVisible();
+  await expect.poll(() => receiptPreview.evaluate((image) => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
+  const previewRegion = page.getByRole("region", { name: "Selected receipt image preview" });
+  await previewRegion.focus();
+  await page.keyboard.press("End");
+  await expect.poll(() => previewRegion.evaluate((region) => region.scrollTop)).toBeGreaterThan(0);
+  const previousPreview = await receiptPreview.getAttribute("src");
+  expect(previousPreview).toMatch(/^blob:/);
   await mockScenario("ambiguous");
   await uploadReceipt(page);
+  expect(await page.evaluate(async (url) => {
+    try { await fetch(url!); return false; } catch { return true; }
+  }, previousPreview)).toBe(true);
   await expect(
     page.getByText("2. Review and confirm", { exact: true }),
   ).toBeVisible();
@@ -429,7 +606,7 @@ test("unequal group bills, invalid totals, percentage editing and recorded repay
   account,
 }, testInfo) => {
   await registerAndLogin(page, account);
-  await page.getByRole("link", { name: "Groups", exact: true }).click();
+  await workspaceNavigate(page, "Groups & Splitting");
   await page.getByRole("link", { name: "Create group", exact: true }).click();
   await page
     .getByRole("main")
@@ -687,4 +864,52 @@ test("two real browser sessions isolate records and logout protects routes", asy
     await second.close();
     await removeTestAccount(other.email);
   }
+});
+
+
+test("glass surfaces remain accessible with reduced transparency and forced colors", async ({ page, context }, testInfo) => {
+  const session = await context.newCDPSession(page);
+  await session.send("Emulation.setEmulatedMedia", {
+    features: [
+      { name: "prefers-reduced-transparency", value: "reduce" },
+      { name: "prefers-reduced-motion", value: "reduce" },
+    ],
+  });
+  await page.goto("/login");
+  expect(await page.evaluate(() => matchMedia("(prefers-reduced-transparency: reduce)").matches)).toBe(true);
+  await accessibleAndFits(page);
+  await expect(page.locator("[data-slot=card]")).toHaveCSS("backdrop-filter", "none");
+  await page.screenshot({ path: testInfo.outputPath("reduced-transparency.png"), fullPage: true });
+  await page.emulateMedia({ forcedColors: "active", reducedMotion: "reduce" });
+  await accessibleAndFits(page);
+  await page.screenshot({ path: testInfo.outputPath("forced-colors.png"), fullPage: true });
+});
+
+
+test("monthly category budgets preserve expenses and do not roll over", async ({ page, account }, testInfo) => {
+  await registerAndLogin(page, account);
+  await createTransaction(page, "EXPENSE", "100", "Food", "Budget meal");
+  await page.goto("/budgets?month=2026-11");
+  const limit = page.getByLabel("Food monthly limit (MMK)", { exact: true });
+  await limit.fill("100");
+  await page.getByRole("button", { name: "Save Food budget", exact: true }).click();
+  await expect(page.getByRole("progressbar", { name: "Food budget progress" })).toHaveAttribute("aria-valuenow", "100");
+  await limit.fill("0");
+  await page.getByRole("button", { name: "Save Food budget", exact: true }).click();
+  await expect(page.getByText("Enter a valid positive whole-kyat limit and month.", { exact: true })).toBeVisible();
+  await expect(limit).toHaveValue("0");
+  await limit.fill("80");
+  await page.getByRole("button", { name: "Save Food budget", exact: true }).click();
+  await expect(page.locator("[data-budget-category=Food]")).toHaveAttribute("data-overspend", "20");
+  await accessibleAndFits(page);
+  await page.screenshot({ path: testInfo.outputPath("budgets.png"), fullPage: true });
+  await page.getByLabel("Budget month", { exact: true }).fill("2026-12");
+  await page.getByRole("button", { name: "Choose month", exact: true }).click();
+  await expect(limit).toHaveValue("");
+  await expect(page.getByRole("progressbar", { name: "Food budget progress" })).toHaveCount(0);
+  await page.goto("/budgets?month=2026-11");
+  await page.getByRole("button", { name: "Remove Food limit", exact: true }).click();
+  await expect(page.getByRole("progressbar", { name: "Food budget progress" })).toHaveCount(0);
+  await page.goto(dashboard);
+  await expect(page.locator("[data-summary=expenses]")).toHaveAttribute("data-amount", "100");
 });

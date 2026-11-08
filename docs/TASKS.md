@@ -1,6 +1,50 @@
 # Implementation tasks
 
+## Shared photograph background — Authorized and verified 2026-11-08
+
+- [x] Optimize the supplied photograph locally and apply it through global CSS to every public/protected page in both themes. Preserve readable surfaces, fixed cover sizing and accessibility/print fallbacks; leave the source image untouched.
+- [x] Pass build/lint/typecheck/diff checks and both responsive dashboard browser cases with both-theme accessibility scans; inspect the background screenshot and update UI_THEME/PROGRESS. No new dependency, commit, push or deployment.
+
+## Dark workspace redesign — Authorized 2026-11-08 (D-06)
+
+- [x] Inspect existing routes/layout/theme/components and preserve dirty feature work; present the staged plan. Apply UI UX Pro Max guidance directly under the existing no-Python permission and Ponytail's reuse principles.
+- [x] Centralize Dark Base/Frosted Glass tokens, early persisted appearance selection, shared theme controls, readable fields/charts and motion/transparency/no-blur/system-color fallbacks. No new dependency or financial/authentication change.
+- [x] Add the authenticated shared shell, reserved collapsible desktop sidebar, labeled icon tooltips, active routes, keyboard skip link, profile/logout and accessible mobile drawer. Reuse `/dashboard#analytics` and `/app` for Analytics/Settings.
+- [x] Refine reporting-period hierarchy, balance/income/expense/savings cards, existing semantic charts, desktop recent-transactions table/mobile list, upload surface and exact group-balance color labels. Preserve existing CRUD/review/filter/settlement behavior.
+- [x] Add desktop/mobile browser coverage for collapse tooltips, active routes, drawer Escape/focus, open-drawer accessibility, profile, theme persistence after reload and unchanged form drafts. Existing exercised pages scan both actual themes.
+- [x] Finish verification: lint/typecheck/build, 49 unit/database cases, one HTTP lifecycle and the full 18-case desktop/360px browser suite passed. Four repeated reduced-transparency/forced-color cases passed after system-color fixes. After a final Analytics fragment/filter fix and four-card skeleton alignment, rebuild/lint/typecheck and both focused navigation cases passed, including tablet/short-landscape drawer checks. Inspect desktop dashboard, mobile Frosted form and drawer screenshots; update handoff/docs. No commit/push/deploy.
+
+## Product improvements — Authorized and verified 2026-11-08 (D-05)
+
+- [x] Implement monthly category budgets with an additive local migration, exact full-month personal actuals, remaining/overspend, accessible numeric progress, 80% notices, unset/no-rollover rules, owned operations, retry handling and stale-row/version protection. Verify database and desktop/360px browser cases.
+- [x] Add monthly income/expense/net cash-flow visualization and exact table; aligned previous-calendar-month/month-to-date and equal-length custom comparisons; shared predicates/snapshot, zero months, leap boundaries and insufficient/future-history suppression. Preserve existing donut drill-down and chart behavior.
+- [x] Add literal case-insensitive merchant/note search, exact inclusive amount bounds, combined count/record predicates and stable owned pagination. Preserve validated context through detail/edit/cancel/save/delete; reject arbitrary return URLs. Verify unit/database and both browser viewports.
+- [x] Add deterministic largest-category, signed cash-flow savings rate, comparable expense-change and full-month budget threshold insights. Explicitly handle zero income/previous expense and insufficient history; partial ranges link to full-month budgets. No AI dependency.
+- [x] Run final lint, typecheck, 49 unit/PostgreSQL tests, one HTTP lifecycle, production build and all 16 desktop/mobile Playwright cases. Pass Prisma validation and three-migration status; inspect mobile analytics and desktop budget screenshots. Existing receipt/group/auth flows and light/dark accessibility regressions pass.
+- [x] Update requirements, architecture, accepted rules, glossary and setup/manual checklist. Preserve previous audit evidence and unrelated work. No commit, push or deployment performed.
+
+Remaining: representative real receipts, manual assistive technology, other browsers/physical devices and production security/backup checks remain open. Other audit roadmap items are not implied approved or complete.
+
 Status legend: `[x]` complete, `[ ]` pending. Core MVP regression checks now include isolated Playwright at desktop/360px. Manual assistive-technology, representative real-receipt and production release checks remain open. See [MVP_REVIEW.md](MVP_REVIEW.md) for evidence and prioritized issues; FR references resolve to [REQUIREMENTS.md](REQUIREMENTS.md).
+
+## Receipt precision follow-up — Authorized 2026-11-08
+
+- [x] Reproduce dropped Ks/grouped totals with a failing regression and a local-model fixture; normalize explicit kyat labels, Myanmar digits and exact numeric formatting without guessing/rounding or changing manual-entry rules.
+- [x] Improve the existing local provider prompt narrowly; add a collapsible, keyboard-scrollable browser-only source preview with URL cleanup, photo guidance and MMK (Ks) review labeling. Preserve corrected review fields, explicit confirmation, ownership and upload limits.
+- [x] Pass 41 unit/database tests, one HTTP lifecycle, ten desktop/mobile Playwright cases, typecheck, lint and production build; rerun both receipt browser cases with a long synthetic image, keyboard scrolling and preview URL revocation. Inspect responsive screenshots. Three real local-model synthetic cases pass all five field checks after the fix; the original Ks case failed currency/total checks before it.
+- [ ] Verify the user's original failure with a non-sensitive sample and representative photo/Myanmar-language receipts. Synthetic cases do not prove real-world OCR accuracy. Existing audit recommendations remain unapproved.
+
+## Pre-deployment audit — Authorized 2026-11-08
+
+- [x] Inspect actual source, schema/SQL, authorization, precise money/dates, visualization, receipt/group flows, UI and tests; classify verified/partial/missing/broken behavior in SYSTEM_AUDIT.md.
+- [x] Run fresh lint/typecheck/build, 40 unit/PostgreSQL cases, one HTTP lifecycle, ten browser cases, Prisma validation/status and dependency audits; report the live Ollama refusal and unexecuted release/manual checks honestly.
+- [x] Create FEATURE_GAPS.md and ENHANCEMENT_ROADMAP.md with all requested enhancement evaluations, priorities, dependencies, acceptance criteria and risks; preserve existing architecture and feature work.
+- [ ] Obtain separate approval for remaining audit fixes/enhancements. The subsequent four-feature request authorizes monthly budgets, cash-flow analytics, merchant/note and amount filtering, and rule-based insights under D-05. Other items, including R01 common database-test target protection, retain their gates. No roadmap item is complete merely because the audit is complete.
+
+## Glassmorphism theme — Authorized 2026-11-08
+
+- [x] Apply UI UX Pro Max glassmorphism through semantic tokens and shared cards, controls, dialogs, auth/account pages and dashboard navigation; keep financial behavior unchanged.
+- [x] Verify the final theme with lint/typecheck/build, 40 unit/database tests, one HTTP lifecycle and ten Playwright cases. Light/dark desktop/360px accessibility scans, reduced-transparency/motion and forced-colors checks pass; screenshots were inspected. Manual screen readers/other browsers and physical-device performance remain open.
 
 ## Scoped setup — Authorized 2026-11-06
 

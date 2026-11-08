@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { DeleteTransactionButton } from "@/features/transactions/delete-button";
+import { safeReturnTo } from "@/features/transactions/navigation";
 
 export const metadata = { title: "Transaction details | Smart Expense" };
 
@@ -23,10 +24,11 @@ export default async function TransactionPage({
   const record = await getTransaction(id);
   if (!record) notFound();
   const query = await searchParams;
+  const returnTo = safeReturnTo(query.returnTo);
   return (
     <main className="mx-auto w-full max-w-2xl space-y-6 px-4 py-8 sm:px-6 sm:py-12">
       <Link
-        href="/transactions"
+        href={returnTo}
         className="text-sm text-muted-foreground underline underline-offset-4"
       >
         Back to transactions
@@ -80,12 +82,12 @@ export default async function TransactionPage({
       </Card>
       <div className="flex flex-wrap gap-3">
         <Button size="lg" asChild>
-          <Link href={`/transactions/${id}/edit`}>
+          <Link href={`/transactions/${id}/edit?${new URLSearchParams({ returnTo })}`}>
             <Pencil aria-hidden="true" />
             Edit transaction
           </Link>
         </Button>
-        <DeleteTransactionButton id={id} version={record.version} />
+        <DeleteTransactionButton id={id} version={record.version} returnTo={returnTo} />
       </div>
     </main>
   );

@@ -1,5 +1,19 @@
 # Architecture
 
+## Shared presentation shell (D-06)
+
+The protected layout retains its server-side `requireUser()` and Suspense boundary, then passes minimal profile fields and server-rendered page children to `components/application-shell.tsx`. The client shell owns only navigation collapse/drawer/profile interaction. Every existing data query/action still authorizes separately. No private data is moved into shared caching or browser storage.
+
+`app/globals.css` owns Dark Base/Frosted Glass tokens and responsive shell spacing. `components/theme-switcher.tsx` synchronizes appearance controls; a fixed bootstrap in the root layout applies the validated local preference before body paint. Storage contains only `smart-expense-theme`; unavailable storage falls back safely. The existing `/app` route hosts account/appearance settings and `/dashboard#analytics` hosts analytics. Business routes and database/API boundaries are unchanged.
+
+## D-05 extension — Monthly planning and analytics
+
+`/budgets?month=YYYY-MM` uses thin authenticated routes and `features/budgets/` for Zod schemas, server actions, owned persistence, exact progress and forms. Budget is additive: unique owner/category/month, BIGINT whole-MMK positive limit, optimistic version, expense-category composite foreign key and owner/month index. SQL constraints enforce positive bounded amounts, positive versions and first-of-month dates. Migration `20261108000100_monthly_budgets` preserves existing records.
+
+Dashboard grouping still executes parameterized PostgreSQL SUM and serializes monetary values as strings. A RepeatableRead transaction obtains selected/prior aggregates, recent entries, earliest ledger date and applicable budget limits. Monthly cash flow and deterministic insight calculations use bigint. Recharts Number conversions affect only coordinates; tables, tooltips, percentages and accounting stay exact. Previous-period and full-month-budget rules live beside dashboard logic. No jobs or external insight provider are added.
+
+Transaction list count and rows share one Prisma predicate/snapshot, including literal case-insensitive merchant/note search and bigint bounds. Navigation helpers reconstruct only known validated ledger filters. Mutation ownership/version checks remain unchanged. No authentication, provider or currency strategy changes.
+
 Status: the local MVP is covered by integration and isolated desktop/mobile Playwright checks. The native capture mismatch is not fixed; the separately requested browser runner supplies automated UI evidence. See [MVP_REVIEW.md](MVP_REVIEW.md), [DECISIONS.md](DECISIONS.md) and [SETUP.md](SETUP.md) for scope, evidence and remaining gates.
 
 ## Runtime and structure
@@ -124,5 +138,7 @@ The server-only ReceiptExtractor accepts prepared bytes and expense category IDs
 Zod checks all output and blanks uncertain/invalid fields. Currency never defaults to MMK; unsupported/unknown currency also blanks amount. React holds editable suggestions only in memory. A separately authenticated action validates explicit confirmation/currency and delegates to the existing owned EXPENSE creation path with a stable per-review UUID retry key. It ignores submitted identity by constructing only allowed fields, revalidates transactions/dashboard, and redirects to the saved transaction. Reviewed transaction fields are the sole persistence; Receipt metadata remains unused. No schema/migration change. Mock transport/service tests and real HTTP confirmation cover this boundary; real OCR quality is a manual prerequisite.
 
 Image retention, shared group-account access and payment execution remain absent.
+
+Receipt precision follow-up: normalize only explicit kyat aliases to the existing MMK value. Receipt-only numeric normalization maps Myanmar digits, validates comma/space grouping and removes one/two zero decimal places using strings before the existing bigint parser. It never rounds fractions, repairs unclear digits or changes manual-entry money rules. The concise local model prompt names kyat labels and an exact grouping example; the output contract and uncertainty checks are unchanged. A client-side, collapsible image preview uses a temporary object URL, revoked on replacement/effect cleanup, with a keyboard-scrollable region for long receipts. Preview pixels never pass through Next image optimization or browser storage. Cache Components may retain an unsaved selected File in browser memory until the draft is replaced/reloaded; successful save invalidates the draft. Existing review fields remain unchanged until replacement extraction succeeds.
 
 No hosting provider is selected or provisioned. Production TLS, trusted reverse proxy configuration, backups/restores and secrets management require verification before a separately authorized launch. Tests simulate HTTPS cookie behavior over loopback and cannot prove browser TLS or production infrastructure. SETUP.md records manual checks and official sources.

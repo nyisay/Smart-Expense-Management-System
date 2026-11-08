@@ -9,8 +9,8 @@ export default function DashboardLoading() {
         Loading your financial overview…
       </p>
       <div className="h-10 w-52 animate-pulse rounded-lg bg-muted" />
-      <div className="grid gap-4 md:grid-cols-3">
-        {[0, 1, 2].map((item) => (
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {[0, 1, 2, 3].map((item) => (
           <div key={item} className="h-36 animate-pulse rounded-xl bg-muted" />
         ))}
       </div>

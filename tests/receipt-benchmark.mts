@@ -27,6 +27,21 @@ const cases = [
     total: "1500",
   },
   {
+    name: "ks-grouped-total",
+    lines: [
+      "Merchant: Synthetic Restaurant",
+      "Date: 2026-11-08",
+      "Currency: Ks",
+      "Meal 12,000.00",
+      "Tax 500.00",
+      "FINAL TOTAL: Ks 12,500.00",
+      "Cash tendered: Ks 20,000.00",
+      "Change: Ks 7,500.00",
+    ],
+    merchant: "Synthetic Restaurant",
+    total: "12500",
+  },
+  {
     name: "subtotal-cash-change",
     lines: [
       "Merchant: Synthetic Restaurant",

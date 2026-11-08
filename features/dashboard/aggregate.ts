@@ -20,6 +20,7 @@ export function aggregateDashboard(
     { id: string; name: string; amount: bigint }
   >();
   const months = new Map<string, bigint>();
+  const monthlyIncome = new Map<string, bigint>();
   for (
     let index = monthIndex(filters.from);
     index <= monthIndex(filters.to);
@@ -30,6 +31,7 @@ export function aggregateDashboard(
     const amount = BigInt(row.amount);
     if (row.type === "INCOME") {
       income += amount;
+      monthlyIncome.set(row.month, (monthlyIncome.get(row.month) ?? BigInt(0)) + amount);
       continue;
     }
     expense += amount;
@@ -58,6 +60,12 @@ export function aggregateDashboard(
     months: [...months].map(([month, amount]) => ({
       month,
       amount: amount.toString(),
+    })),
+    cashflowMonths: [...months].map(([month, amount]) => ({
+      month,
+      income: (monthlyIncome.get(month) ?? BigInt(0)).toString(),
+      expense: amount.toString(),
+      balance: ((monthlyIncome.get(month) ?? BigInt(0)) - amount).toString(),
     })),
   };
 }

@@ -12,17 +12,20 @@ import {
 } from "@/components/ui/native-select";
 import { createTransactionAction, editTransactionAction } from "./actions";
 import type { CategoryOption, TransactionView } from "./schemas";
+import { transactionDetailHref } from "./navigation";
 
 export function TransactionForm({
   categories,
   record,
   submissionKey,
   today,
+  returnTo = "/transactions",
 }: {
   categories: CategoryOption[];
   record?: TransactionView;
   submissionKey?: string;
   today: string;
+  returnTo?: string;
 }) {
   const [state, action, pending] = useActionState(
     record ? editTransactionAction : createTransactionAction,
@@ -54,6 +57,7 @@ export function TransactionForm({
   });
   return (
     <form action={action} className="space-y-6">
+      <input type="hidden" name="returnTo" value={returnTo} />
       {record ? (
         <>
           <input type="hidden" name="id" value={identity.id} />
@@ -206,7 +210,7 @@ export function TransactionForm({
           {pending ? "Saving…" : record ? "Save changes" : "Create transaction"}
         </Button>
         <Button variant="outline" size="lg" asChild>
-          <Link href={record ? `/transactions/${record.id}` : "/transactions"}>
+          <Link href={record ? transactionDetailHref(record.id, returnTo) : returnTo}>
             Cancel
           </Link>
         </Button>

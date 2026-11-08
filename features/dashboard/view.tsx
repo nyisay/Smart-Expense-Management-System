@@ -32,12 +32,17 @@ import {
   relatedTransactionsHref,
 } from "./filters";
 import { DashboardCharts } from "./charts";
+import { CashflowChart } from "./cashflow";
+import { ComparisonView } from "./comparison-view";
+import { InsightsView } from "./insights-view";
+import { RecentTable } from "./recent-table";
 import type { DashboardData } from "./store";
 
 export function DashboardView({ data }: { data: DashboardData }) {
   const today = todayInReportingTimezone();
   const presets = [
     { label: "This month", ...defaultDashboardRange(today) },
+    { label: "Month to date", from: `${today.slice(0, 7)}-01`, to: today },
     {
       label: "Last 6 months",
       from: `${monthKey(monthIndex(today) - 5)}-01`,
@@ -52,14 +57,14 @@ export function DashboardView({ data }: { data: DashboardData }) {
       icon: ArrowDownLeft,
       description: "Money received in this range",
       accent:
-        "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
+        "bg-[var(--positive)]/10 text-[var(--positive)]",
     },
     {
       label: "Expenses",
       value: data.expense,
       icon: ArrowUpRight,
       description: "Personal expenses in this range",
-      accent: "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
+      accent: "bg-[var(--negative)]/10 text-[var(--negative)]",
     },
     {
       label: "Balance",
@@ -67,39 +72,12 @@ export function DashboardView({ data }: { data: DashboardData }) {
       icon: Wallet,
       description: "Selected income minus expenses",
       accent:
-        "bg-violet-50 text-violet-700 dark:bg-violet-950 dark:text-violet-300",
+        "bg-primary/10 text-primary",
     },
   ];
   return (
     <main className="mx-auto w-full max-w-7xl space-y-7 px-4 py-6 sm:px-8 sm:py-10">
-      <nav
-        aria-label="Application"
-        className="flex flex-wrap items-center justify-between gap-3 border-b pb-5"
-      >
-        <Link
-          href="/dashboard"
-          className="text-sm font-semibold tracking-tight"
-        >
-          Smart Expense
-          <span className="ml-2 text-xs font-normal text-muted-foreground">
-            MMK
-          </span>
-        </Link>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/groups">Groups</Link>
-          </Button>
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/receipts/new">Upload receipt</Link>
-          </Button>
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/transactions">Transactions</Link>
-          </Button>
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/app">Account</Link>
-          </Button>
-        </div>
-      </nav>
+
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="mb-2 text-xs font-medium uppercase tracking-widest text-muted-foreground">
@@ -111,6 +89,7 @@ export function DashboardView({ data }: { data: DashboardData }) {
           <p className="mt-2 max-w-xl text-sm text-muted-foreground">
             See what comes in, where it goes, and what remains.
           </p>
+          <p className="mt-3 text-xs font-medium text-muted-foreground">Reporting period: <time dateTime={data.filters.from}>{data.filters.from}</time> — <time dateTime={data.filters.to}>{data.filters.to}</time> · MMK</p>
         </div>
         <Button size="lg" asChild>
           <Link href="/transactions/new">
@@ -214,9 +193,9 @@ export function DashboardView({ data }: { data: DashboardData }) {
       </Card>
       <section
         aria-label="Financial summary"
-        className="grid gap-4 md:grid-cols-3"
+        className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
       >
-        {summary.map((item) => (
+        {[summary[2], summary[0], summary[1]].map((item) => (
           <Card key={item.label} className="min-w-0">
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>
@@ -240,7 +219,13 @@ export function DashboardView({ data }: { data: DashboardData }) {
             </CardContent>
           </Card>
         ))}
+        <Card className="min-w-0">
+          <CardHeader><CardTitle><h2>Savings rate</h2></CardTitle><span className="text-xs text-muted-foreground">Recorded cash flow</span></CardHeader>
+          <CardContent><p className="text-2xl font-semibold tracking-tight tabular-nums">{data.insights.savingsRate ?? "Unavailable"}</p><p className="mt-2 text-xs text-muted-foreground">{data.insights.savingsRate === null ? "No income in this selection" : "Net cash flow divided by income"}</p></CardContent>
+        </Card>
       </section>
+      <section id="analytics" aria-label="Financial analytics" className="space-y-6">
+      <CashflowChart months={data.cashflowMonths} />
       <DashboardCharts
         data={{
           filters: data.filters,
@@ -250,6 +235,8 @@ export function DashboardView({ data }: { data: DashboardData }) {
           expenseCategories: data.expenseCategories,
         }}
       />
+      </section>
+      <div className="grid items-start gap-6 xl:grid-cols-2"><ComparisonView data={data} /><InsightsView data={data} /></div>
       <Card>
         <CardHeader className="flex flex-wrap items-center justify-between gap-3 sm:flex-row">
           <div>
@@ -269,7 +256,7 @@ export function DashboardView({ data }: { data: DashboardData }) {
         </CardHeader>
         <CardContent>
           {data.recent.length ? (
-            <ul className="divide-y">
+            <><RecentTable records={data.recent} /><ul className="divide-y md:hidden">
               {data.recent.map((record) => (
                 <li key={record.id}>
                   <Link
@@ -311,7 +298,7 @@ export function DashboardView({ data }: { data: DashboardData }) {
                   </Link>
                 </li>
               ))}
-            </ul>
+            </ul></>
           ) : (
             <div className="space-y-2 py-9 text-center">
               <p className="font-medium">No transactions in this range</p>

@@ -52,9 +52,9 @@ const mock = httpServer(async (req, res) => {
       message: {
         content: JSON.stringify({
           merchant: "Synthetic receipt shop",
-          total: mode === "ambiguous" ? null : "12500",
+          total: mode === "ambiguous" ? null : "12,500.00",
           date: mode === "ambiguous" ? "2026-02-29" : "2026-11-08",
-          currency: "MMK",
+          currency: "Ks",
           categoryId: category.id,
           uncertain: mode === "ambiguous" ? ["total", "date"] : [],
         }),

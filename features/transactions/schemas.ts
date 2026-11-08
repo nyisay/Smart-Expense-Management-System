@@ -51,11 +51,17 @@ export const transactionFiltersSchema = z
     categoryId: emptyOptional(z.uuid()),
     from: emptyOptional(calendarDateSchema),
     to: emptyOptional(calendarDateSchema),
+    q: emptyOptional(z.string().trim().max(100)),
+    minAmount: emptyOptional(z.string().refine((value) => value === "0" || amountSchema.safeParse(value).success, "Enter a valid whole-kyat minimum.")),
+    maxAmount: emptyOptional(z.string().refine((value) => value === "0" || amountSchema.safeParse(value).success, "Enter a valid whole-kyat maximum.")),
     page: z.coerce.number().int().min(1).max(1000000).default(1),
   })
   .refine((data) => !data.from || !data.to || data.from <= data.to, {
     path: ["to"],
     message: "End date must be on or after the start date.",
+  })
+  .refine((data) => data.minAmount === undefined || data.maxAmount === undefined || !/^\d+$/.test(data.minAmount) || !/^\d+$/.test(data.maxAmount) || BigInt(data.minAmount) <= BigInt(data.maxAmount), {
+    path: ["maxAmount"], message: "Maximum must be at least the minimum.",
   });
 
 export type TransactionFilters = z.output<typeof transactionFiltersSchema>;

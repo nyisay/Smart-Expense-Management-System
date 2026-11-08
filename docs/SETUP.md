@@ -1,5 +1,19 @@
 # Local setup and verification
 
+## Appearance and navigation (D-06)
+
+Dark Base is the default. Choose **Frosted Glass** using Appearance in the desktop sidebar/header, mobile navigation drawer, account Settings (`/app`) or authentication page. The browser retains only this appearance choice between visits. If storage is disabled, controls still work for the current visit.
+
+Desktop navigation has a collapse/expand control; icon links expose names/tooltips. On tablet/mobile, use **Open navigation**, select a destination or press Escape to close. Analytics navigates to the existing dashboard chart section; Settings uses the existing account page. No standalone empty Analytics/Settings routes were added.
+
+Manual presentation checks:
+
+- [ ] Choose each theme, reload and confirm preference retention without a noticeable light flash. Try with browser storage denied and confirm usable defaults.
+- [ ] Navigate Dashboard, Transactions, Receipt Scanner, Groups & Splitting, Analytics, Budgets and Settings. Collapse/expand on desktop; verify mobile drawer focus containment, Escape and focus return.
+- [ ] Use keyboard Tab and the skip link; inspect visible focus, collapsed tooltips, profile menu and logout. Check mobile landscape/tablet and long names/amounts.
+- [ ] Compare exact chart tooltips/tables and budget/group labels in both themes. Confirm date/category filters, input drafts, receipt review and settlements retain their behavior.
+- [ ] Check reduced motion/transparency, a browser without backdrop-filter and forced colors. Complete manual screen-reader, physical-device and Firefox/WebKit checks before release; Chromium/axe coverage is not WCAG certification.
+
 ## Prerequisites and environment
 
 Use Node.js 22.21 or a compatible Node 22 release, npm, and PostgreSQL. The installed Prisma CLI/Client/adapter versions are pinned together at 7.10.1; Auth.js uses `next-auth` 5.0.0-beta.32. The beta release is locked and covered by HTTP lifecycle tests; review upgrades deliberately.
@@ -92,6 +106,10 @@ Review merchant, final total, date, currency and category. Unknown/uncertain val
 Extraction has an announced pending state, a two-minute timeout, bounded output and five attempts per authenticated user per 15 minutes (500 global). Retries and invalid uploads count toward the limit; ordinary manual entry remains available. Unavailable Ollama/model, bad output or corrupt/unsupported images produce safe errors and a manual-entry link. A failed replacement upload keeps the existing review/corrections; confirmation is disabled during extraction. Navigation does not guarantee immediate cancellation of already-running inference; it is bounded by the timeout. There is no background queue.
 
 Automated tests mock both the extraction service and Ollama HTTP responses; they need no model, API key or paid calls. Real recognition accuracy, latency, peak memory and narrow-screen/keyboard behavior remain manual checks. The application is not a certified receipt/accounting extraction system; ambiguous totals and dates must be verified by the user even if the model fails to flag them.
+
+Receipt currency labels `Ks`, `Ks.`, `kyat`, `kyats`, `ကျပ်` and `က်ပ္` now mean MMK; the user's MMKs/MKKS variants are also recognized. For example, a clear final total `Ks 12,500.00` becomes MMK 12500 without rounding. Myanmar digits and valid comma/space grouping are supported. Nonzero decimals, malformed grouping, ambiguous dots, unknown currency and model-flagged uncertain fields still require correction. The review selector shows `MMK (Ks)`; other financial pages retain their MMK formatting.
+
+Choose a sharp, straight, well-lit photo with the merchant/date/final total visible. The selected-image preview stays in browser memory and can be collapsed; focus its image region to scroll a long receipt with the keyboard. A new image does not replace the old review until extraction succeeds. Preview URLs are revoked when replaced/deactivated; images are never persisted or routed through image optimization. The optional local benchmark now has three synthetic English cases, including Ks with grouped/zero-decimal amounts; it does not establish accuracy on actual Myanmar receipts.
 
 Manual receipt checks:
 
@@ -194,9 +212,26 @@ The starter layout still downloads Geist fonts from Google during a cold build; 
 - [ ] With an empty account, an income-only range and an invalid range, verify the appropriate zero/empty/validation states. A second user's entries must not appear.
 - [ ] In a production-like HTTPS deployment, confirm canonical AUTH_URL, trusted proxy/host handling, cookie behavior, TLS, database access restrictions, backups and logs before a separately approved launch.
 
-## Known boundaries
+## Budgets, advanced analytics and search (D-05)
 
-JWT session lifetime is eight hours; Auth.js may refresh it on session access. Logout clears the current browser cookie; it cannot revoke a previously stolen JWT immediately. Deleting a user prevents subsequent token use because JWT and protected data access check the persisted user. Password reset, email verification, invitations, role administration, receipt OCR/storage and group/settlement workflows are absent. Financial operations are Server Actions, not public REST endpoints. Fixed-window auth throttling allows five attempts per normalized email/action and 500 total attempts/action per 15-minute window across instances; production abuse policy may need tuning.
+After pulling the additive budget schema, run `npm run db:generate` and `npm run db:migrate` before starting the application. The budget migration was applied to the local development database during implementation. Existing records are preserved; no financial sample data is required.
+
+- Open **Budgets** from the dashboard, choose a month and set an expense-category limit. Whole-MMK limits are independent each month. Removing a limit preserves expenses; unset limits are unbudgeted. Actuals always cover the full month, without rollover or prorating.
+- Dashboard cash-flow bars/line and exact table use the selected dates/category. Choose **Month to date** for an aligned current comparison. A full current month ending in the future suppresses comparative conclusions. Missing prior recorded history also suppresses comparisons.
+- Full-month dashboard budget notices start at 80%. Partial/multiple months show a link to the full-month budget page. Group bills and repayments remain separate from these totals.
+- Transactions now accept merchant/note search and inclusive exact minimum/maximum amounts, combined with existing filters. The detail/edit/back/delete journey retains validated list filters and page.
+
+Manual verification:
+
+- [ ] Set Food to 1,000 MMK, record 800 MMK personal Food spending and confirm the numeric progress/80% notice. Add 201 MMK and confirm 1,001 spent, zero remaining and 1 MMK overspend. Delete the limit and confirm both expenses remain.
+- [ ] Choose the following month and confirm no limit rolled forward. Record a group bill and confirm budget/dashboard personal totals do not change.
+- [ ] Enter two months of income/expenses and check exact cash-flow table, selected/prior dates and arithmetic. Check a leap February, month-to-date and a custom interval. Empty history and zero selected income must show unavailable rates without invented conclusions.
+- [ ] Search a merchant/note, combine exact bounds/type/category/dates, paginate when needed, open/edit/cancel/save/delete a matching record and check filter context. A second account cannot see or change the first account's budget/transactions.
+- [ ] At desktop/360px, use keyboard controls and inspect chart tooltips/exact tables and budget numeric labels. Automated Chromium/axe checks do not replace manual assistive-technology or physical-device checks.
+
+Focused automated coverage: `node --conditions=react-server --import tsx --test tests/budgets.test.ts tests/analytics.test.ts tests/transaction-filtering.test.ts`. Existing `npm test`, `npm run test:http`, `npm run test:e2e`, `npm run lint`, `npm run typecheck` and `npm run build` cover regression checks.
+
+JWT session lifetime is eight hours; Auth.js may refresh it on session access. Logout clears the current browser cookie; it cannot revoke a previously stolen JWT immediately. Deleting a user prevents subsequent token use because JWT and protected data access check the persisted user. Password reset, email verification, invitations and role administration are absent. Receipt extraction/review, owner-managed group expenses/recorded repayments and monthly budgets are implemented; persistent receipt image storage is absent. Financial operations are Server Actions, not public REST endpoints. Fixed-window auth throttling allows five attempts per normalized email/action and 500 total attempts/action per 15-minute window across instances; production abuse policy may need tuning.
 
 ## Official implementation references
 

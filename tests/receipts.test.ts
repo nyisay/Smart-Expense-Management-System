@@ -146,8 +146,8 @@ test("receipt suggestions flag ambiguity, missing/invalid dates, unknown categor
     "0",
     "-3",
     "9000000000000001",
-    "1,200",
-    "12.00",
+    "1,20",
+    "12.01",
     "1e4",
   ]) {
     assert.equal(
@@ -170,6 +170,34 @@ test("receipt suggestions flag ambiguity, missing/invalid dates, unknown categor
   assert.throws(() =>
     reviewSuggestion({ ...raw(), rawOCR: "private" }, [categoryId]),
   );
+});
+
+test("receipt normalization recognizes kyat labels and exact printed numeric formats without guessing", () => {
+  for (const currency of ["MMK", "mmk", "MMKs", "MKKS", "Ks", "ks.", "kyat", "Kyats", "ကျပ်", "က်ပ္"]) {
+    const result = reviewSuggestion({ ...raw(), currency, total: "12,500.00" }, [categoryId]);
+    assert.equal(result.currency, "MMK");
+    assert.equal(result.total, "12500");
+    assert.deepEqual(result.uncertain, []);
+  }
+  for (const [printed, expected] of [
+    ["၁၂,၅၀၀.၀၀", "12500"],
+    ["12 500", "12500"],
+    ["12\u00a0500", "12500"],
+    ["12\u202f500", "12500"],
+    ["00012500.00", "12500"],
+    ["12.00", "12"],
+    ["9,000,000,000,000,000.00", "9000000000000000"],
+  ]) {
+    assert.equal(reviewSuggestion({ ...raw(), total: printed }, [categoryId]).total, expected);
+  }
+  for (const total of ["1,25", "12,50,000", "12.500,00", "12.000", "12,500.50", "၁၂,၅၀၀.၅၀", "12500 or 20000", "Ks 12500", "-12,500", "0.00", "9,000,000,000,000,001", "1,000 000"]) {
+    assert.equal(reviewSuggestion({ ...raw(), currency: "Ks", total }, [categoryId]).total, null);
+  }
+  for (const currency of [null, "$", "K", "Ksh", "USD", "LAK", "unknown"]) {
+    assert.equal(reviewSuggestion({ ...raw(), currency, total: "12,500.00" }, [categoryId]).total, null);
+  }
+  assert.equal(reviewSuggestion({ ...raw(), currency: "Ks", uncertain: ["currency"] }, [categoryId]).total, null);
+  assert.equal(reviewSuggestion({ ...raw(), currency: "Ks", uncertain: ["total"] }, [categoryId]).total, null);
 });
 
 test("Ollama adapter sends schema and pixels with bounded local-only requests and validates mocked JSON", async () => {
@@ -256,6 +284,12 @@ test("mocked extraction authorizes before provider calls and never persists fina
 });
 
 test("explicitly confirmed corrected receipts create one exact owned expense and refresh dashboard totals", async () => {
+  const suggestion = await extractReceipt(users[0], file(), ollamaExtractor({}, async () => Response.json({
+    done: true,
+    message: { content: JSON.stringify({ ...raw(), currency: "Ks", total: "၁၂,၅၀၀.၀၀" }) },
+  })));
+  assert.equal(suggestion.currency, "MMK");
+  assert.equal(suggestion.total, "12500");
   const input = {
     merchant: "Corrected shop",
     amount: "18000",
