@@ -10,11 +10,25 @@ The later dark workspace request supersedes the earlier light-default appearance
 
 - Dark Base defaults to charcoal `#090B11`, sidebar `#10131C`, opaque panels `#141821`, pale primary text and readable muted text. Lavender accents, muted emerald income and coral expenses retain explicit text labels.
 - Keep Geist typography and exact, tabular monetary values. Both themes share typography, layout and restrained shadows; no glow or animated ambient effects.
-- Frosted Glass adds a static blue/violet ambient background, 78%-opaque navy panels and 16px blur. Fields/popovers remain opaque. Without backdrop-filter, panels use an opaque fallback.
+- Frosted Glass uses the shared photograph background, 45%-opaque navy panels and 16px blur, following the user's request for more transparency. Fields/popovers remain opaque. Without backdrop-filter, panels use an opaque fallback. Appearance labels/selectors share one horizontal row in the sidebar/mobile drawer and account settings. The user subsequently requested removal from login/sign-up and the top navbar; those views inherit the selected theme without displaying a selector.
 - Use more opaque panels than decorative glass examples to protect financial readability. Centralized tokens govern controls, chart text, marks, grid lines and tooltips.
 - Keep charts flat and legible, with six semantic category colors, textual category names and existing exact-value tables. Do not apply glass effects to bars, slices or monetary labels.
 
 ## Implementation
+
+### Toast feedback
+
+`components/ui/toaster.tsx` mounts once below the root page content inside Suspense, using the already installed [Radix Toast primitive](https://www.radix-ui.com/primitives/docs/components/toast) and shared semantic tokens. Latest-notification replacement avoids stacking banners. Success notices last six seconds and errors ten, with manual dismissal, F8 keyboard access and Radix announcement/pause behavior. Phone notifications appear at the top so they do not cover form submission buttons; larger screens use bottom-right placement.
+
+Sign-in success appears only after a submitted login reaches the protected dashboard. Its short-lived intent marker stays in JavaScript memory for at most 60 seconds and is cleared on a returned failure; it is not authentication state and is never stored in localStorage/cookies or sent to the server. Registration repeats the server's generic response instead of asserting that an email/account exists. Main transaction, receipt, group and budget forms also show native-validation/returned-error toasts while retaining inline messages and field errors. Repeated identical failed submissions can show a new notice; ordinary rerenders do not replay one. Receipt extraction carries an explicit UI `ok` flag so a fresh suggestion is labeled ready for review, never saved.
+
+### Shared shadcn control refinement
+
+The user requested replacing remaining plain controls across the system. Added the official Radix/nova Checkbox, Collapsible, Progress, Alert, Skeleton and Table component sources using the existing installed Radix, cn and Lucide packages. No dependency version changed. The registry checkbox icon placeholder is resolved to the project's Lucide Check icon; Progress passes its numeric value to Radix so existing accessible progress values remain accurate. Static tables remain Server Components, with focusable scroll containers for keyboard use.
+
+Receipt review and repayment confirmation use labeled Checkbox controls while retaining `confirmed=yes`, required validation, controlled resets and explicit save/record actions. A shared Disclosure composition combines Collapsible and Button for exact chart tables, group shares and receipt previews; force-mounted content preserves the temporary preview image/ref while collapsed. Category drill-down uses the existing Button. Standardized Alert feedback spans auth, transaction, receipt, group and budget forms. Skeletons provide consistent dashboard/transaction/receipt/group/budget loading surfaces. Transaction/dashboard tables share the same shadcn structure and existing exact values, captions, filters and pagination.
+
+Component references: [Checkbox](https://ui.shadcn.com/docs/components/radix/checkbox), [Collapsible](https://ui.shadcn.com/docs/components/radix/collapsible), [Progress](https://ui.shadcn.com/docs/components/radix/progress). Existing shadcn inputs/native selects and private hidden form identities were retained because they already support the working form contract.
 
 `app/globals.css` owns semantic shadcn/Tailwind colors, `.glass-panel`, `.glass-control`, responsive shell spacing and accessibility fallbacks. Shared primitives carry the treatment into transactions, receipt review, groups and authentication. The dashboard foregrounds selected reporting dates, four financial summary cards, existing charts/comparisons and a desktop recent-transactions table/mobile list. The savings card uses the already-computed exact rate; no figures are fabricated.
 

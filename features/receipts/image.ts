@@ -1,8 +1,9 @@
 import "server-only";
 import sharp from "sharp";
 import { z } from "zod";
+import { MAX_RECEIPT_BYTES, RECEIPT_MIME_TYPES, RECEIPT_UPLOAD_ERROR } from "./limits";
 
-export const MAX_RECEIPT_BYTES = 10 * 1024 * 1024;
+export { MAX_RECEIPT_BYTES } from "./limits";
 export const MAX_RECEIPT_PIXELS = 20_000_000;
 export class ReceiptError extends Error {}
 
@@ -10,12 +11,12 @@ const fileSchema = z
   .file()
   .min(1)
   .max(MAX_RECEIPT_BYTES)
-  .mime(["image/jpeg", "image/png", "image/webp"]);
+  .mime([...RECEIPT_MIME_TYPES]);
 
 export async function prepareReceiptImage(input: unknown): Promise<Buffer> {
   const parsed = fileSchema.safeParse(input);
   if (!parsed.success)
-    throw new ReceiptError("Choose a JPG, PNG or WebP image up to 10 MiB.");
+    throw new ReceiptError(RECEIPT_UPLOAD_ERROR);
   const file = parsed.data;
   const bytes = Buffer.from(await file.arrayBuffer());
   const signature = bytes.subarray(0, 12);

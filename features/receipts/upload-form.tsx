@@ -14,6 +14,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { CategoryOption } from "@/features/transactions/schemas";
 import type { ReceiptSuggestion } from "./schemas";
 import { extractReceiptAction, confirmReceiptAction } from "./actions";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Disclosure } from "@/components/ui/disclosure";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useFeedbackToast, toastInvalidInput } from "@/components/use-feedback-toast";
+import { MAX_RECEIPT_BYTES, RECEIPT_MIME_TYPES, RECEIPT_UPLOAD_ERROR } from "./limits";
 
 const fieldLabels = {
   merchant: "Merchant",
@@ -37,6 +42,7 @@ function ReviewForm({
   const [state, action, pending] = useActionState(confirmReceiptAction, {
     message: "",
   });
+  useFeedbackToast(state);
   const [values, setValues] = useState({
     merchant: suggestion.merchant ?? "",
     amount: suggestion.total ?? "",
@@ -88,7 +94,7 @@ function ReviewForm({
             performed; verify currency and enter a whole-kyat amount yourself.
           </p>
         )}
-        <form action={action} className="space-y-5">
+        <form action={action} onInvalidCapture={toastInvalidInput} className="space-y-5">
           <input type="hidden" name="submissionKey" value={submissionKey} />
           <fieldset
             disabled={pending || extracting}
@@ -199,29 +205,27 @@ function ReviewForm({
               {error("note")}
             </div>
             <div>
-              <label className="flex items-start gap-3 text-sm">
-                <input
-                  className="mt-1 size-4 shrink-0 accent-primary"
-                  type="checkbox"
+              <div className="flex items-start gap-3 rounded-lg border bg-muted/20 p-3 text-sm">
+                <Checkbox
+                  id="receipt-confirmed"
+                  className="mt-0.5 size-5 after:-inset-y-3"
                   name="confirmed"
                   value="yes"
                   required
                   checked={confirmed}
-                  onChange={(e) => setConfirmed(e.target.checked)}
+                  onCheckedChange={(value) => setConfirmed(value === true)}
                   {...validation("confirmed")}
                 />
-                <span>
+                <Label htmlFor="receipt-confirmed" className="cursor-pointer text-sm font-normal leading-relaxed">
                   I reviewed the merchant, final total, date, currency and
                   category and confirm this expense.
-                </span>
-              </label>
+                </Label>
+              </div>
               {error("confirmed")}
             </div>
           </fieldset>
           {state.message && (
-            <p role="alert" className="text-sm text-destructive">
-              {state.message}
-            </p>
+            <Alert variant="destructive"><AlertDescription>{state.message}</AlertDescription></Alert>
           )}
           <Button
             type="submit"
@@ -244,15 +248,19 @@ function ReviewForm({
 
 export function ReceiptUploadForm({
   categories,
+  usesCloud,
 }: {
   categories: CategoryOption[];
+  usesCloud: boolean;
 }) {
   const [state, action, pending] = useActionState(
     extractReceiptAction,
-    { message: "" },
+    { message: "", ok: false },
     "/receipts/new",
   );
+  useFeedbackToast(state, "Receipt ready for review", "Receipt extraction failed");
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [uploadError, setUploadError] = useState("");
   const preview = useRef<HTMLImageElement>(null);
   useEffect(() => {
     const element = preview.current;
@@ -271,26 +279,35 @@ export function ReceiptUploadForm({
           <CardTitle>1. Upload a receipt</CardTitle>
         </CardHeader>
         <CardContent>
-          <form action={action} className="space-y-4 rounded-xl border border-dashed border-input bg-muted/20 p-4 sm:p-6">
+          <form action={action} onInvalidCapture={toastInvalidInput} className="space-y-4 rounded-xl border border-dashed border-input bg-muted/20 p-4 sm:p-6">
             <Label htmlFor="receipt-image">Receipt image</Label>
             <Input
               id="receipt-image"
               name="image"
               type="file"
-              accept="image/jpeg,image/png,image/webp"
+              accept={RECEIPT_MIME_TYPES.join(",")}
               required
               disabled={pending}
-              aria-describedby="receipt-limits receipt-photo-help"
+              aria-describedby="receipt-limits receipt-photo-help receipt-upload-error"
+              aria-invalid={Boolean(uploadError)}
               onChange={(event) => {
                 const image = event.target.files?.[0];
-                setSelectedImage(image && image.size <= 10 * 1024 * 1024 &&
-                  ["image/jpeg", "image/png", "image/webp"].includes(image.type) ? image : null);
+                const valid = image && image.size > 0 && image.size <= MAX_RECEIPT_BYTES &&
+                  RECEIPT_MIME_TYPES.some((type) => type === image.type);
+                const message = image && !valid ? RECEIPT_UPLOAD_ERROR : "";
+                event.target.setCustomValidity(message);
+                setUploadError(message);
+                setSelectedImage(valid ? image : null);
               }}
             />
+            <p id="receipt-upload-error" role={uploadError ? "alert" : undefined} className="text-sm text-destructive">
+              {uploadError}
+            </p>
             <p id="receipt-limits" className="text-sm text-muted-foreground">
-              JPG, PNG or WebP. Maximum 10 MiB and 20 megapixels; static images
-              only. Images are processed temporarily by this server and local
-              Ollama and are not stored. Suggestions stay in this page until
+              JPG, PNG or WebP. Maximum 4 MB (4,000,000 bytes) and 20 megapixels; static images
+              only. {usesCloud
+                ? "Images are sent to Ollama Cloud for processing under its privacy policy. This application does not store images."
+                : "Images are processed temporarily by this server and local Ollama and are not stored."} Suggestions stay in this page until
               confirmed; reloading discards them.
             </p>
             <p id="receipt-photo-help" className="text-sm text-muted-foreground">
@@ -299,10 +316,7 @@ export function ReceiptUploadForm({
               Ks / kyat means MMK; unclear amounts still need your correction.
             </p>
             {selectedImage && (
-              <details open className="rounded-xl border bg-muted/30 p-3">
-                <summary className="cursor-pointer rounded font-medium focus-visible:outline-2 focus-visible:outline-ring">
-                  Selected image preview
-                </summary>
+              <Disclosure defaultOpen title="Selected image preview" className="bg-muted/30">
                 <figure className="mt-3">
                   <div
                     role="region"
@@ -320,7 +334,7 @@ export function ReceiptUploadForm({
                     Collapse this preview to reach the review fields.
                   </figcaption>
                 </figure>
-              </details>
+              </Disclosure>
             )}
             <div className="flex flex-wrap gap-3">
               <Button type="submit" disabled={pending}>
@@ -337,7 +351,9 @@ export function ReceiptUploadForm({
           </form>
           <div aria-live="polite" aria-busy={pending} className="mt-4 text-sm">
             {pending
-              ? "Reading your receipt with local Ollama. This can take up to two minutes. Nothing is saved during extraction."
+              ? usesCloud
+                ? "Reading your receipt with Ollama Cloud. This can take up to one minute. Nothing is saved during extraction."
+                : "Reading your receipt with local Ollama. This can take up to two minutes. Nothing is saved during extraction."
               : state.message}
           </div>
         </CardContent>

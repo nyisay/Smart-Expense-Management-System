@@ -27,6 +27,24 @@ function refresh(groupId: string): never {
   revalidatePath("/groups", "layout");
   redirect(`/groups/${groupId}?saved=yes`);
 }
+
+export async function deleteGroupAction(
+  _state: GroupFormState,
+  form: FormData,
+): Promise<GroupFormState> {
+  const user = await requireUser();
+  try {
+    await store.deleteGroup(user.id, {
+      groupId: form.get("groupId"),
+      updatedAt: form.get("updatedAt"),
+      confirmed: form.get("confirmed"),
+    });
+  } catch (error) {
+    return failure(error);
+  }
+  revalidatePath("/groups", "layout");
+  redirect("/groups?deleted=yes");
+}
 function expenseFields(form: FormData) {
   const members = form.getAll("memberId");
   const values = form.getAll("shareValue");

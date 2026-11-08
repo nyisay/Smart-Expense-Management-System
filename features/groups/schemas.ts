@@ -14,6 +14,11 @@ export const createGroupSchema = z.strictObject({
   name,
   selfName: name,
 });
+export const deleteGroupSchema = z.strictObject({
+  groupId: uuid(),
+  updatedAt: z.iso.datetime(),
+  confirmed: z.literal("yes", "Confirm deletion first."),
+});
 export const addMemberSchema = z.strictObject({
   groupId: uuid(),
   id: uuid(),

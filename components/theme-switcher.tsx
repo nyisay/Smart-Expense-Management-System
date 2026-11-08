@@ -16,9 +16,9 @@ function subscribe(callback: () => void) {
 export function ThemeSwitcher() {
   const id = useId();
   const theme = useSyncExternalStore(subscribe, () => document.documentElement.dataset.theme ?? "dark", () => "dark");
-  return <div className="space-y-2">
-    <Label htmlFor={id} className="text-xs text-muted-foreground">Appearance</Label>
-    <NativeSelect id={id} className="w-full" value={theme} onChange={(event) => {
+  return <div className="flex items-center gap-1">
+    <Label htmlFor={id} className="shrink-0 whitespace-nowrap text-xs text-muted-foreground">Appearance</Label>
+    <NativeSelect id={id} className="min-w-0 flex-1" style={{ paddingRight: "1.5rem" }} value={theme} onChange={(event) => {
       const next = event.target.value === "frosted" ? "frosted" : "dark";
       document.documentElement.dataset.theme = next;
       try { localStorage.setItem("smart-expense-theme", next); } catch { /* Storage can be disabled; the current visit still works. */ }

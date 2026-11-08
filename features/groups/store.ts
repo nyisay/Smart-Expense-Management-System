@@ -11,6 +11,7 @@ import {
 } from "./calculations";
 import {
   createGroupSchema,
+  deleteGroupSchema,
   addMemberSchema,
   createExpenseSchema,
   editExpenseSchema,
@@ -54,7 +55,10 @@ async function withGroup<T>(
       { id: string }[]
     >`SELECT "id" FROM "Group" WHERE "id" = ${groupId}::uuid AND "ownerId" = ${owner}::uuid FOR UPDATE`;
     if (!rows.length) throw unavailable();
-    return operation(tx, owner);
+    const result = await operation(tx, owner);
+    // Monotonic revision for stale whole-group confirmations, including rapid writes.
+    await tx.$executeRaw`UPDATE "Group" SET "updatedAt" = GREATEST(clock_timestamp(), "updatedAt" + interval '1 millisecond') WHERE "id" = ${groupId}::uuid AND "ownerId" = ${owner}::uuid`;
+    return result;
   });
 }
 
@@ -150,9 +154,24 @@ export async function listGroups(userId: unknown) {
       id: true,
       name: true,
       currency: true,
-      _count: { select: { members: true, expenses: true } },
+      updatedAt: true,
+      _count: { select: { members: true, expenses: true, settlements: true } },
     },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+  });
+}
+
+export async function deleteGroup(userId: unknown, input: unknown) {
+  const values = deleteGroupSchema.parse(input);
+  return withGroup(userId, values.groupId, async (tx, owner) => {
+    const where = { id: values.groupId, ownerId: owner, updatedAt: new Date(values.updatedAt) };
+    if (!await tx.group.findFirst({ where, select: { id: true } })) throw unavailable();
+    const owned = { groupId: values.groupId, group: { ownerId: owner } };
+    await tx.settlement.deleteMany({ where: owned });
+    // Expense shares are removed by the existing cascading foreign key.
+    await tx.groupExpense.deleteMany({ where: owned });
+    await tx.groupMember.deleteMany({ where: owned });
+    if (!(await tx.group.deleteMany({ where })).count) throw unavailable();
   });
 }
 

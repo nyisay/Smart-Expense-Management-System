@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { Suspense } from "react";
+import { Toaster } from "@/components/ui/toaster";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,7 +29,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} dark h-full antialiased`}
     >
       <head><script dangerouslySetInnerHTML={{ __html: `try{var t=localStorage.getItem('smart-expense-theme');if(t==='frosted')document.documentElement.dataset.theme=t}catch{}` }} /></head>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">{children}<Suspense fallback={null}><Toaster /></Suspense></body>
     </html>
   );
 }

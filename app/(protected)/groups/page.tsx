@@ -1,11 +1,16 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { DeleteGroup } from "@/features/groups/forms";
 import { getGroups } from "@/features/groups/queries";
 
 export const metadata = { title: "Groups | Smart Expense" };
-export default async function GroupsPage() {
+export default async function GroupsPage({ searchParams }: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const groups = await getGroups();
+  const query = await searchParams;
   return (
     <main className="mx-auto w-full max-w-5xl space-y-6 px-4 py-8 sm:px-6">
       <Link href="/dashboard" className="text-sm underline underline-offset-4">
@@ -25,6 +30,7 @@ export default async function GroupsPage() {
           <Link href="/groups/new">Create group</Link>
         </Button>
       </header>
+      {query.deleted === "yes" && <Alert role="status"><AlertDescription>Group deleted. Its bills and repayments were removed.</AlertDescription></Alert>}
       {!groups.length && (
         <Card>
           <CardContent className="py-8">
@@ -52,6 +58,9 @@ export default async function GroupsPage() {
               {group._count.members} participant(s) · {group._count.expenses}{" "}
               bill(s) · {group.currency}
             </CardContent>
+            <CardFooter className="border-t pt-4">
+              <DeleteGroup key={`${group.id}:${group.updatedAt.toISOString()}`} group={{ ...group, updatedAt: group.updatedAt.toISOString() }} />
+            </CardFooter>
           </Card>
         ))}
       </div>

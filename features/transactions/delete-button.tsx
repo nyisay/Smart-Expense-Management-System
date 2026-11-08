@@ -14,6 +14,7 @@ import {
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
 import { deleteTransactionAction } from "./actions";
+import { useFeedbackToast, toastInvalidInput } from "@/components/use-feedback-toast";
 
 export function DeleteTransactionButton({
   id,
@@ -27,6 +28,7 @@ export function DeleteTransactionButton({
   const [state, action, pending] = useActionState(deleteTransactionAction, {
     message: "",
   });
+  useFeedbackToast(state);
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
@@ -48,7 +50,7 @@ export function DeleteTransactionButton({
             cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <form action={action} className="space-y-4">
+        <form action={action} onInvalidCapture={toastInvalidInput} className="space-y-4">
           <input type="hidden" name="id" value={id} />
           <input type="hidden" name="version" value={version} />
           <input type="hidden" name="confirmed" value="yes" />

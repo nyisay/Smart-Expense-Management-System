@@ -61,6 +61,10 @@ after(async () => {
 });
 
 test("receipt upload decodes JPG/PNG/WebP and strips metadata; rejects MIME, size, truncation and animations", async () => {
+  assert.equal(MAX_RECEIPT_BYTES, 4_000_000);
+  const atLimit = Buffer.alloc(MAX_RECEIPT_BYTES);
+  image.copy(atLimit);
+  assert.ok((await prepareReceiptImage(file(atLimit))).length > 0);
   for (const [format, mime] of [
     ["png", "image/png"],
     ["jpeg", "image/jpeg"],
@@ -284,10 +288,19 @@ test("mocked extraction authorizes before provider calls and never persists fina
 });
 
 test("explicitly confirmed corrected receipts create one exact owned expense and refresh dashboard totals", async () => {
-  const suggestion = await extractReceipt(users[0], file(), ollamaExtractor({}, async () => Response.json({
+  const baseline = await prisma.transaction.count({ where: { ownerId: users[0] } });
+  const suggestion = await extractReceipt(users[0], file(), ollamaExtractor({
+    RECEIPT_PROVIDER: "ollama-cloud",
+    OLLAMA_API_KEY: "synthetic-cloud-test-key",
+    OLLAMA_MODEL: "synthetic-vision",
+  }, async (url) => {
+    assert.equal(String(url), "https://ollama.com/api/chat");
+    return Response.json({
     done: true,
     message: { content: JSON.stringify({ ...raw(), currency: "Ks", total: "၁၂,၅၀၀.၀၀" }) },
-  })));
+  });
+  }));
+  assert.equal(await prisma.transaction.count({ where: { ownerId: users[0] } }), baseline);
   assert.equal(suggestion.currency, "MMK");
   assert.equal(suggestion.total, "12500");
   const input = {

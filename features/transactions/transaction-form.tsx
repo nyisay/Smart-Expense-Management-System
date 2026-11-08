@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useFeedbackToast, toastInvalidInput } from "@/components/use-feedback-toast";
 import {
   NativeSelect,
   NativeSelectOption,
@@ -32,6 +34,7 @@ export function TransactionForm({
     { message: "" },
   );
   // Keep retry/version identity stable across failed action rerenders.
+  useFeedbackToast(state);
   const [identity] = useState({ id: record?.id, version: record?.version, submissionKey });
   // Controlled values preserve entries after React resets a completed form action.
   const [values, setValues] = useState({
@@ -56,7 +59,7 @@ export function TransactionForm({
     "aria-describedby": state.errors?.[name] ? `${name}-error` : undefined,
   });
   return (
-    <form action={action} className="space-y-6">
+    <form action={action} onInvalidCapture={toastInvalidInput} className="space-y-6">
       <input type="hidden" name="returnTo" value={returnTo} />
       {record ? (
         <>
@@ -188,12 +191,7 @@ export function TransactionForm({
         </div>
       </fieldset>
       {state.message && (
-        <p
-          role="alert"
-          className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm"
-        >
-          {state.message}
-        </p>
+        <Alert variant="destructive"><AlertDescription>{state.message}</AlertDescription></Alert>
       )}
       {!categories.length && (
         <p role="alert" className="text-sm text-destructive">

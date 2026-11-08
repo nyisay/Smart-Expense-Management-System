@@ -1,3 +1,5 @@
+import { Skeleton } from "@/components/ui/skeleton";
+
 export default function DashboardLoading() {
   return (
     <div
@@ -8,15 +10,15 @@ export default function DashboardLoading() {
       <p className="text-sm text-muted-foreground">
         Loading your financial overview…
       </p>
-      <div className="h-10 w-52 animate-pulse rounded-lg bg-muted" />
+      <Skeleton aria-hidden="true" className="h-10 w-52 rounded-lg" />
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {[0, 1, 2, 3].map((item) => (
-          <div key={item} className="h-36 animate-pulse rounded-xl bg-muted" />
+          <Skeleton aria-hidden="true" key={item} className="h-36 rounded-xl" />
         ))}
       </div>
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="h-96 animate-pulse rounded-xl bg-muted" />
-        <div className="h-96 animate-pulse rounded-xl bg-muted" />
+        <Skeleton aria-hidden="true" className="h-96 rounded-xl" />
+        <Skeleton aria-hidden="true" className="h-96 rounded-xl" />
       </div>
     </div>
   );

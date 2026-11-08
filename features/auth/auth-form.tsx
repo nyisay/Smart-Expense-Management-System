@@ -8,7 +8,9 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { loginAction, registerAction } from "./actions";
-import { ThemeSwitcher } from "@/components/theme-switcher";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useFeedbackToast, toastInvalidInput } from "@/components/use-feedback-toast";
+import { beginLoginToast } from "@/components/ui/toaster";
 
 export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const registering = mode === "register";
@@ -16,9 +18,9 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
     registering ? registerAction : loginAction,
     { ok: false, message: "" },
   );
+  useFeedbackToast(state, registering ? "Registration request received" : "Signed in successfully", registering ? "Registration unavailable" : "Unable to sign in");
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center gap-7 px-4 py-12 sm:max-w-lg sm:px-6">
-      <div className="ml-auto w-40"><ThemeSwitcher /></div>
       <div className="flex items-center justify-center gap-3">
         <span className="rounded-2xl bg-primary p-3 text-primary-foreground shadow-sm">
           <Wallet className="size-6" aria-hidden="true" />
@@ -38,7 +40,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
           </p>
         </CardHeader>
         <CardContent>
-          <form action={action} className="space-y-5">
+          <form action={action} onInvalidCapture={toastInvalidInput} onSubmit={() => { if (!registering) beginLoginToast(); }} className="space-y-5">
             {registering && (
               <div className="space-y-2">
                 <Label htmlFor="auth-name">Name</Label>
@@ -65,9 +67,9 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
             <p id="password-help" className="text-sm text-muted-foreground">
               Use 12–128 characters.
             </p>
-            <p role="status" aria-live="polite" className="text-sm">
-              {state.message}
-            </p>
+            <div role="status" aria-live="polite">
+              {state.message && <Alert role="presentation" variant={state.ok ? "default" : "destructive"}><AlertDescription>{state.message}</AlertDescription></Alert>}
+            </div>
             <Button disabled={pending} className="w-full">
               {pending ? "Please wait…" : registering ? "Register" : "Sign in"}
             </Button>

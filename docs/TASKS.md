@@ -1,5 +1,41 @@
 # Implementation tasks
 
+## Ollama Cloud receipt adapter and hosted upload limit — Approved 2026-11-09 (D-08)
+
+- [x] Preserve default local extraction and add explicit server-only Ollama Cloud selection, private key/model validation, a fixed HTTPS endpoint, redirect rejection, bounded uncached requests, sanitized access/quota/timeout errors and strict prompted-JSON validation without unsupported cloud schema format. Retain uncertainty, explicit review, retry-safe owned saving and exact dashboard totals.
+- [x] Share the 4,000,000-byte limit/MIME/error text across client and server, block invalid selections before upload, retain decoding/privacy checks and set the action-body ceiling to 4,400,000 bytes. Disclose the selected processing mode and preserve previous reviews after errors.
+- [x] Add five mocked cloud-provider tests and extend PostgreSQL receipt coverage for cloud output without auto-saving, confirmed correction, retry safety, owner isolation and dashboard totals. Check the exact upload boundary and keep HTTP/browser harnesses pinned to local mocks even when the developer selects cloud.
+- [x] Finish final desktop/mobile browser regressions, inspect synthetic receipt screenshots and record lint/typecheck/unit/database/HTTP/build results in PROGRESS.md. Lint/typecheck/build passed, 56 unit/database tests passed, the strengthened six-case receipt suite passed, one HTTP lifecycle passed and all 20 desktop/360px browser cases passed (8.0 minutes including sandbox teardown). Invalid MIME/oversized selections sent no extraction request. The browser runner required explicit cleanup of its verified isolated test servers before returning exit 0; the user's development server was preserved.
+- [ ] Separate manual release gate: configure a real cloud key/model and verify representative non-sensitive receipt accuracy, provider access/usage and the chosen Vercel function duration. No billable API call or deployment is part of automated verification.
+
+## Delete a complete group history — Approved and verified 2026-11-08 (D-07)
+
+- [x] Record the user's explicit selection to delete previous groups from the list, including bills and repayments. Add a trash-icon control, confirmation with counts/permanence/no-refund warning, Cancel-first focus, pending protection and success feedback.
+- [x] Implement authenticated owner-only, Zod-validated, atomic deletion of repayments, bills/shares, participants and group. Reuse existing group locks/foreign keys and Group.updatedAt for monotonic stale-confirmation rejection; preserve personal transactions and unselected groups. No schema/migration or dependency change.
+- [x] Verify missing/foreign principals, invalid/unconfirmed input, stale same-count bill edits, concurrent deletes, full child cleanup, empty groups, other-owner and same-owner group preservation, and unchanged personal dashboard data with real PostgreSQL tests.
+- [x] Pass lint/typecheck/build, all 51 unit/database tests, one HTTP lifecycle and all 20 desktop/mobile browser cases (3.0 minutes). Both focused group cases also pass (36.0 seconds), covering cancel, cross-tab stale rejection, fresh confirmed removal, inaccessible deleted URLs and accessibility in both themes. Inspect confirmation screenshots and update requirements/architecture/decisions/setup/handoff. No commit, push or deployment.
+
+## Authentication and form toasts — Authorized 2026-11-08
+
+- [x] Add a shared Radix notification host without a dependency; show generic registration and post-redirect sign-in success, repeated authentication errors and main-form validation/returned-error feedback. Keep inline messages, auth actions, cookies and exact financial operations intact.
+- [x] Add desktop/mobile tests for native invalid-input focus, generic registration, real sign-in success, dismissal and repeated wrong-password errors. Retain existing financial/ownership regressions; add active-toast forced-color coverage.
+- [x] Pass the full 20-case desktop/mobile browser regression (2.9 minutes), including active-toast forced-color checks, real auth success, repeated auth errors and existing financial/isolation flows. Fix the first-run phone toast/Save overlap through responsive positioning. Pass lint/typecheck/build, 49 unit/database cases and one HTTP lifecycle; inspect toast screenshots and update docs. No dependency, commit, push or deployment.
+
+## Shared shadcn control refinement — Authorized 2026-11-08
+
+- [x] Inspect existing controls and add six official Radix/nova component sources without changing dependencies. Replace plain confirmations, disclosures, progress, feedback, loading surfaces, table markup and category drill-down controls across the existing features; preserve money, authorization, theme/background and form identities.
+- [x] Extend browser checks for keyboard receipt preview collapse/reopen without replacing its blob URL, exact group share disclosure and keyboard horizontal table scrolling. Retain existing real save/repayment, stale-input and ownership tests.
+- [x] Pass final lint/typecheck/build, 49 unit/database cases, one production HTTP lifecycle and all 18 desktop/mobile browser cases (3.2 minutes), including both themes, tablet/landscape navigation, forced colors and keyboard table scrolling. Fix the first-run mobile table-focus defect without excluding axe rules. Inspect responsive receipt/budget screenshots and update UI_THEME/PROGRESS. No dependency/database change, commit, push or deployment.
+
+## Appearance placement — Authorized and verified 2026-11-08
+
+- [x] Remove the Appearance selector from login/sign-up and the top navbar, retaining sidebar/mobile drawer and account Settings controls and existing theme persistence. Pass lint/typecheck/build and diff checks; update setup/theme/handoff notes. Browser suites were not rerun for this small control removal.
+
+## Appearance refinement — Authorized and verified 2026-11-08
+
+- [x] Reduce Frosted panel opacity to 45% and align Appearance labels/selectors horizontally everywhere; size wrappers and selector padding to avoid clipped option labels. Preserve Dark Base, persistence and accessible fallbacks.
+- [x] Pass build/lint/typecheck/diff checks and both final responsive workspace browser cases, including both-theme accessibility, tablet/landscape and theme persistence; update UI_THEME/PROGRESS. No functional changes or deployment.
+
 ## Shared photograph background — Authorized and verified 2026-11-08
 
 - [x] Optimize the supplied photograph locally and apply it through global CSS to every public/protected page in both themes. Preserve readable surfaces, fixed cover sizing and accessibility/print fallbacks; leave the source image untouched.

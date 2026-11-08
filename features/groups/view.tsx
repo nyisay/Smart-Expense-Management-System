@@ -1,3 +1,4 @@
+import { Disclosure } from '@/components/ui/disclosure';
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -212,10 +213,7 @@ export function GroupDetail({ group }: { group: GroupView }) {
                     {formatAmount(expense.amount)}
                   </p>
                 </div>
-                <details className="text-sm">
-                  <summary className="cursor-pointer underline underline-offset-4">
-                    View exact shares
-                  </summary>
+                <Disclosure title="View exact shares" className="mt-4">
                   <ul className="mt-3 space-y-1">
                     {expense.shares.map((share) => (
                       <li
@@ -229,7 +227,7 @@ export function GroupDetail({ group }: { group: GroupView }) {
                       </li>
                     ))}
                   </ul>
-                </details>
+                </Disclosure>
                 <div className="flex flex-wrap gap-2">
                   <Button variant="outline" size="sm" asChild>
                     <Link

@@ -1,9 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { Trash2 } from "lucide-react";
 import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useFeedbackToast, toastInvalidInput } from "@/components/use-feedback-toast";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Label } from "@/components/ui/label";
 import {
   NativeSelect,
@@ -23,6 +27,7 @@ import { formatAmount, parseAmount } from "@/lib/money";
 import { allocateShares } from "./calculations";
 import {
   createGroupAction,
+  deleteGroupAction,
   addMemberAction,
   createExpenseAction,
   editExpenseAction,
@@ -33,6 +38,7 @@ import {
 import type { GroupView, ExpenseView } from "./store";
 
 function Feedback({ state }: { state: GroupFormState }) {
+  useFeedbackToast(state);
   const labels: Record<string, string> = {
     name: "Name",
     selfName: "Your participant name",
@@ -47,17 +53,14 @@ function Feedback({ state }: { state: GroupFormState }) {
     confirmed: "Confirmation",
   };
   return state.message ? (
-    <div
-      role="alert"
-      className="space-y-1 rounded-lg border border-destructive/30 p-3 text-sm text-destructive"
-    >
+    <Alert variant="destructive"><AlertDescription className="space-y-1">
       <p>{state.message}</p>
       {Object.entries(state.errors ?? {}).map(([field, messages]) => (
         <p key={field}>
           {labels[field] ?? "Form"}: {messages[0]}
         </p>
       ))}
-    </div>
+    </AlertDescription></Alert>
   ) : null;
 }
 function Cancel({ href }: { href: string }) {
@@ -81,7 +84,7 @@ export function NewGroupForm({
   const [identity] = useState(id);
   const [values, setValues] = useState({ name: "", selfName });
   return (
-    <form action={action} className="space-y-5">
+    <form action={action} onInvalidCapture={toastInvalidInput} className="space-y-5">
       <input type="hidden" name="id" value={identity} />
       <fieldset disabled={pending} className="space-y-5 disabled:opacity-60">
         <legend className="sr-only">New group</legend>
@@ -133,7 +136,7 @@ export function MemberForm({ groupId, id }: { groupId: string; id: string }) {
   const [identity] = useState(id);
   const [name, setName] = useState("");
   return (
-    <form action={action} className="space-y-5">
+    <form action={action} onInvalidCapture={toastInvalidInput} className="space-y-5">
       <input type="hidden" name="groupId" value={groupId} />
       <input type="hidden" name="id" value={identity} />
       <div className="space-y-2">
@@ -215,7 +218,7 @@ export function ExpenseForm({
     splitMessage = error instanceof Error ? error.message : "Check the split.";
   }
   return (
-    <form action={action} className="space-y-6">
+    <form action={action} onInvalidCapture={toastInvalidInput} className="space-y-6">
       <input type="hidden" name="groupId" value={group.id} />
       {record ? (
         <>
@@ -430,7 +433,7 @@ export function SettlementForm({
     setConfirmed(false);
   }
   return (
-    <form action={action} className="space-y-5">
+    <form action={action} onInvalidCapture={toastInvalidInput} className="space-y-5">
       <input type="hidden" name="groupId" value={group.id} />
       <input type="hidden" name="submissionKey" value={identity} />
       <p className="text-sm text-muted-foreground">
@@ -495,21 +498,21 @@ export function SettlementForm({
             aria-invalid={!!state.errors?.occurredOn}
           />
         </div>
-        <label className="flex items-start gap-3 text-sm">
-          <input
-            className="mt-1 size-4 shrink-0 accent-primary"
-            type="checkbox"
+        <div className="flex items-start gap-3 rounded-lg border bg-muted/20 p-3 text-sm">
+          <Checkbox
+            id="settlement-confirmed"
+            className="mt-0.5 size-5 after:-inset-y-3"
             name="confirmed"
             value="yes"
             required
             checked={confirmed}
-            onChange={(e) => setConfirmed(e.target.checked)}
+            onCheckedChange={(value) => setConfirmed(value === true)}
           />
-          <span>
+          <Label htmlFor="settlement-confirmed" className="cursor-pointer text-sm font-normal leading-relaxed">
             I confirm this repayment already happened and the direction and
             amount are correct.
-          </span>
-        </label>
+          </Label>
+        </div>
       </fieldset>
       <Feedback state={state} />
       <div className="flex flex-wrap gap-3">
@@ -520,6 +523,39 @@ export function SettlementForm({
       </div>
     </form>
   );
+}
+
+export function DeleteGroup({ group }: { group: {
+  id: string;
+  name: string;
+  updatedAt: string;
+  _count: { members: number; expenses: number; settlements: number };
+} }) {
+  const [state, action, pending] = useActionState(deleteGroupAction, { message: "" });
+  const [revision] = useState(group.updatedAt);
+  return <AlertDialog>
+    <AlertDialogTrigger asChild>
+      <Button variant="destructive" size="sm" aria-label={`Delete group ${group.name}`}><Trash2 aria-hidden="true" />Delete group</Button>
+    </AlertDialogTrigger>
+    <AlertDialogContent onEscapeKeyDown={(event) => { if (pending) event.preventDefault(); }}>
+      <AlertDialogHeader>
+        <AlertDialogTitle>Delete this group?</AlertDialogTitle>
+        <AlertDialogDescription className="break-words">
+          Permanently delete “{group.name}”, its {group._count.members} participant(s), {group._count.expenses} bill(s) and their shares, and {group._count.settlements} recorded repayment(s). This cannot be undone. Personal transactions stay unchanged. Deleting records does not refund payments.
+        </AlertDialogDescription>
+      </AlertDialogHeader>
+      <form action={action} onInvalidCapture={toastInvalidInput} className="space-y-4">
+        <input type="hidden" name="groupId" value={group.id} />
+        <input type="hidden" name="updatedAt" value={revision} />
+        <input type="hidden" name="confirmed" value="yes" />
+        <Feedback state={state} />
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
+          <Button type="submit" variant="destructive" disabled={pending}><Trash2 aria-hidden="true" />{pending ? "Deleting…" : "Delete group permanently"}</Button>
+        </AlertDialogFooter>
+      </form>
+    </AlertDialogContent>
+  </AlertDialog>;
 }
 
 export function DeleteBill({
@@ -548,7 +584,7 @@ export function DeleteBill({
             member balances will be recalculated.
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <form action={action} className="space-y-4">
+        <form action={action} onInvalidCapture={toastInvalidInput} className="space-y-4">
           <input type="hidden" name="groupId" value={groupId} />
           <input type="hidden" name="id" value={record.id} />
           <input type="hidden" name="version" value={version} />

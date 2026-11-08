@@ -82,6 +82,7 @@ const app = spawn(
       AUTH_URL: "https://127.0.0.1:3196",
       AUTH_SECRET: randomBytes(32).toString("base64url"),
       OLLAMA_BASE_URL: "http://127.0.0.1:3198",
+      RECEIPT_PROVIDER: "ollama-local",
       OLLAMA_MODEL: "mvp-e2e-mock",
     },
     stdio: "ignore",

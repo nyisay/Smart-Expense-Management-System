@@ -1,5 +1,27 @@
 # Decision log
 
+## D-08 — Optional Ollama Cloud receipt extraction and hosted upload limit
+
+Status: Accepted on 2026-11-09. The user selected “Ollama Cloud — hosted version of the current provider” and then instructed “perform step 6”, referring to the proposed cloud adapter and Vercel-compatible upload limit. This supersedes D-04's local-only restriction for an explicitly configured cloud mode. It does not authorize deployment, a push, a commit, image retention, or changes to financial calculations.
+
+Keep local Ollama as the default (`RECEIPT_PROVIDER=ollama-local`); require explicit `ollama-cloud`, a private `OLLAMA_API_KEY` and an image-capable `OLLAMA_MODEL` for cloud processing. Pin cloud requests to https://ollama.com/api/chat; reject redirects and never send credentials to a configurable host. Cloud mode ignores the local base URL. Missing/invalid settings fail closed without fallback or automatic retries. The UI discloses external processing before upload. The application does not retain images; Ollama's processing/privacy terms apply externally.
+
+Ollama Cloud currently lacks enforced structured outputs. Prompt for the existing JSON contract, accept only complete JSON or one complete JSON code fence, then use strict Zod validation and the existing uncertainty/currency/date normalization. Preserve explicit editable confirmation and authenticated expense creation. Keep local JSON-schema format. Cap cloud requests at 60 seconds, local requests at 120 seconds, and provider responses at 64 KiB. Return sanitized errors for denied access, quota, timeouts and invalid output.
+
+Limit all receipt uploads to 4,000,000 bytes (decimal 4 MB) in shared client/server configuration. Limit Server Action bodies to 4,400,000 bytes, below Vercel's 4.5 MB payload ceiling, with room for normal multipart/review overhead. This intentionally replaces the earlier 10 MiB limit; larger images must be cropped/compressed before upload. Maintain decoding, signature/MIME agreement, 20-megapixel, single-frame and metadata-removal checks. Cloud account/model availability, function timeout configuration and real receipt quality require separate deployment verification; automated tests use mocks.
+
+References: [Ollama Cloud](https://docs.ollama.com/cloud), [structured-output limitation](https://docs.ollama.com/capabilities/structured-outputs), [Vercel function limits](https://vercel.com/docs/functions/limitations).
+
+## D-07 — Confirmed deletion of an entire owned group history
+
+Status: Accepted on 2026-11-08. In response to the scope question, the user explicitly selected “Previous groups from the Groups & Splitting list, including their bills and repayments”. This supersedes D-03's deferral of whole-group deletion only; individual member deletion and repayment correction/deletion remain deferred.
+
+Add a trash-icon Delete group action to each owned group card. Confirmation identifies the group and participant/bill/repayment counts, states that deletion is permanent, and explains that deleting records does not refund external payments. Cancel is the initial focus. No existing real group is deleted by setup or agent tooling; the action executes only after the owner's confirmation.
+
+The server requires the authenticated persisted owner, Zod-valid group ID/revision/confirmation and the existing owned-group row lock. Delete repayments, bills (whose shares already cascade), participants and the group in one transaction. Existing foreign keys, schema and accounting remain unchanged; personal transactions and other groups must survive.
+
+Use existing Group.updatedAt as a deletion revision. Successful group mutations advance it monotonically inside the group lock, including rapid successive writes. A confirmation opened before a change is rejected and requires reload. Independent bill deletion still preserves repayments. Removing a whole group removes its complete local ledger and does not execute or reverse a payment.
+
 ## D-06 — Dark workspace shell and two appearance themes
 
 Status: Accepted by the user's explicit dark/frosted redesign request on 2026-11-08. This supersedes the earlier light-default glass presentation decision because the user now requests two dark variants and persistent sidebar navigation. Accounting, routes, models, authentication and extraction decisions are unchanged.

@@ -1,5 +1,78 @@
 # Progress and handoff
 
+## 2026-11-09 — Optional Ollama Cloud extraction and Vercel-safe receipt uploads
+
+The user selected Ollama Cloud and explicitly requested deployment instruction step 6. D-08 records approval for this bounded integration, superseding the local-only provider restriction while preserving local mode as the default. No deployment, commit, push, schema/migration, dependency, authentication or financial-calculation change was performed. Existing unrelated working changes were preserved.
+
+The existing server-only Ollama adapter now supports explicit `RECEIPT_PROVIDER=ollama-cloud`, a private `OLLAMA_API_KEY` and a required `OLLAMA_MODEL`. It pins `https://ollama.com/api/chat`, ignores the local base URL in cloud mode, rejects redirects, uses uncached non-streaming fetch and does not automatically retry or fall back. Local mode retains loopback validation, default gemma3:4b, JSON-schema output and a 120-second deadline; cloud uses 60 seconds. Both bound response bodies to 64 KiB. Because Ollama Cloud currently lacks enforced structured output, the prompt carries the existing contract and strict Zod parsing accepts only complete JSON or one complete JSON code fence. Invalid/incomplete output, access denial, quota and transport failures return sanitized errors without provider bodies/credentials. Existing normalization, uncertain-null handling, editable review, explicit confirmation, retry-safe owned expense creation and exact dashboard/budget accounting remain intact.
+
+Shared client/server constants set the image limit to 4,000,000 bytes (4 MB), replacing 10 MiB; Server Action bodies allow 4,400,000 bytes for multipart/review overhead below Vercel's 4.5 MB ceiling. Client custom validity and visible errors block unsupported/oversized selections before upload. Server MIME/signature, full decode, single-frame, 20-megapixel, metadata removal and resize checks remain authoritative. The UI discloses local versus external cloud processing and the selected deadline; it receives no key or private provider configuration. The application does not persist images/raw output. Updated .env.example, SETUP, REQUIREMENTS, ARCHITECTURE, DECISIONS and TASKS with the new configuration and manual release gate.
+
+Executed verification:
+
+- `npm.cmd run lint` and `npm.cmd run typecheck`: passed, including the final test/UI changes.
+- `npm.cmd test`: **56/56** unit/PostgreSQL cases passed. Five new deterministic cloud-provider cases cover pinned auth/endpoint, absent unsupported format, JSON/fence validation, uncertainty, configuration rejection before fetch, local defaults without auth, safe status/transport errors, oversized streamed output cancellation and incomplete generations. Existing receipt integration now consumes mocked cloud output and proves extraction alone writes no transaction, corrected confirmation saves once for the owner, other users remain isolated and dashboard totals reconcile.
+- `node --conditions=react-server --import tsx --test tests/receipts.test.ts`: **6/6** passed after strengthening the exact 4,000,000-byte accepted boundary; oversized input remains rejected.
+- `npm.cmd run build`: initially blocked by sandbox Google Fonts downloads; rerun with network permission passed without changing fonts or unrelated layout code.
+- `npm.cmd run test:http`: **1/1** production HTTP lifecycle passed. Both HTTP and browser harnesses explicitly select local mock mode so a developer's cloud configuration cannot trigger billable test requests.
+- `npm.cmd run test:e2e`: **20/20** desktop/360px Chromium cases passed in **8.0 minutes**, including auth/isolation, existing financial flows, both themes, accessibility and receipt preview/review/failure/confirmation. New browser assertions confirm invalid MIME and oversized files create no extraction request; a valid replacement clears validation. Desktop/mobile synthetic review screenshots were inspected for readable wrapping and preserved controls. Sandboxed Windows teardown left only the isolated harness/Next.js test processes running after browser workers exited; their identities and test ports were verified before explicit tree cleanup. The runner then returned exit 0 and the 20-pass summary. The separate development server was not stopped.
+
+No real Ollama Cloud call was made. Only the presence of cloud configuration was checked, without displaying values; no cloud API key was configured. Live authentication, selected model availability, representative receipt accuracy/latency, provider privacy/usage and Vercel function duration remain **unverified**. Next: privately configure cloud variables from SETUP, restart Next.js and perform the documented non-sensitive manual extraction checks; deploy only with separate authorization. Manual assistive technology, physical devices and other browsers remain outside this verification.
+
+## 2026-11-08 — Confirmed deletion of whole group histories
+
+The user's scope answer explicitly authorizes “Previous groups from the Groups & Splitting list, including their bills and repayments”. D-07 records this approval and supersedes the earlier whole-group deletion deferral. Individual repayment/member deletion remains deferred. No real user group was removed by tooling; verification creates and removes only generated test fixtures.
+
+Each owned group card now has a labeled trash-icon Delete group button. Its shadcn confirmation identifies the group and participant/bill/repayment counts, explains permanent removal and no payment refund, initially focuses Cancel, and prevents cancellation through Escape while the request is pending. Cancel preserves records. Successful deletion returns to the list with visible feedback; deleted detail URLs are unavailable.
+
+The Server Action resolves the authenticated user; the server-only store validates group ID, explicit confirmation and expected revision with Zod. The existing owned-group row lock encloses revision validation and ordered removal of repayments, expenses (shares cascade), participants and group in one transaction. Successful group mutations advance existing Group.updatedAt monotonically using the database clock so stale confirmations reject changes, including edits that leave record counts unchanged. The group list serializes that timestamp for the form. No schema, migration, dependency, currency, balance formula or personal transaction change was needed.
+
+Executed verification:
+
+- `npm run typecheck`, `npm run lint`, `npm run build` and `git diff --check`: passed.
+- `npm test`: **51/51** unit/PostgreSQL cases passed. New coverage checks unauthorized/missing principals, invalid and unconfirmed requests, stale edits, concurrent deletion, atomic child cleanup, empty groups, preservation of other users' groups/repayments and another group owned by the same user, and a real personal expense/dashboard total that survives deletion.
+- `npm run test:http`: **1/1** production HTTP lifecycle passed.
+- `npm run test:e2e -- --grep unequal`: **2/2** focused desktop/360px group cases passed in 36.0 seconds. Cancel, another-tab member change/stale confirmation, reload/review, confirmed deletion, old-URL recovery and unchanged dashboard totals were observed.
+- `npm run test:e2e`: **20/20** full browser cases passed in 3.0 minutes, retaining auth, receipt, transaction, budget, toast and group coverage, both themes, accessibility, keyboard and responsive checks. Confirmation screenshots were inspected, including mobile text wrapping and visible delete icon.
+
+The focused group unit run emitted a non-failing pg warning about concurrent queued queries and future pg@9 behavior; no driver upgrade or unrelated query refactor was made. No credentials were exposed and unrelated working changes were preserved. No commit, push, deployment, production deletion or database reset. Manual screen readers, physical devices and other browsers remain follow-up verification.
+
+## 2026-11-08 — Authentication and main-form toast feedback
+
+The user requested toast feedback for login/sign-up and errors. Added one themed Radix host at the root inside Suspense, plus a small hook for action-result feedback and first-invalid-input events. No dependency was added. Latest notices replace one another, have visible success/error icons and a Dismiss control, support keyboard access and preserve inline/field feedback. Phone placement is at the top; larger screens use bottom-right.
+
+Sign-in success is emitted after the existing redirect reaches the protected dashboard following an actual form submission. Its 60-second intent marker is in memory only and clears on failures; authentication actions, JWT/cookie handling and server authorization are unchanged. Registration uses the existing generic server message and never asserts account/email existence. Repeated equal failures emit new notices without replaying on ordinary rerenders. Transaction/delete, budget, receipt and group forms report validation and returned-action errors. Receipt extraction adds an explicit UI `ok` flag to distinguish ready-for-review from failure; review and explicit owned saving remain unchanged.
+
+Executed verification: lint/typecheck/build, all 49 unit/PostgreSQL tests and one production HTTP lifecycle passed. Both focused toast browser cases passed, including wrong-password retries, generic registration, native invalid-field focus, dismissal, correct-login success and both-theme accessibility. The first full run passed 19/20 and exposed a phone toast covering Save on the group form; responsive placement fixed this actual UI defect. The final full desktop/mobile run passed **20/20 in 2.9 minutes**, including active error toasts in forced colors, reduced preferences, existing financial/ownership flows, and tablet/landscape navigation. Desktop/mobile error-toast screenshots were inspected; `git diff --check` passed. No credentials, tokens or receipt fields are included in notification messages/logs.
+
+No database/currency/business calculation or auth strategy changed. No commit, push or deployment. Manual screen readers, physical devices and non-Chromium browsers remain follow-up checks.
+
+## 2026-11-08 — Shared shadcn controls across existing features
+
+The user requests polished, related shadcn components across the whole system. Inspected actual controls, requirements, architecture, standards, dirty work and installed Next.js server/client guidance. Applied UI UX Pro Max/Ponytail with the existing permission to use written guidance without Python. Most form fields/buttons already used shadcn; targeted the remaining plain confirmations, disclosures, feedback, progress, loading surfaces and tables rather than rewriting working forms or adding unrelated features.
+
+Added six official Radix/nova registry sources: Checkbox, Collapsible, Progress, Alert, Skeleton and Table. Reused installed packages; package manifests/lock and database schema are unchanged. Resolved the registry's Lucide icon placeholder, preserved Radix Progress's value/aria contract and kept static tables on the server. The shared Disclosure combines existing Button with Collapsible; force-mounted hidden content keeps receipt preview refs/object URLs stable through keyboard collapse/reopen.
+
+Receipts and repayments retain controlled required confirmation, the exact `confirmed=yes` submission and server checks. Category buttons retain selected/pending behavior and focus; chart and personal transaction tables retain exact captions/amounts and filtering. Budget progress retains exact numeric descriptions and the capped visual value. Auth/transaction/receipt/group/budget forms use shared Alert feedback while retaining live/error semantics. All financial feature loading routes now use Skeleton. Theme choice, the supplied background and prior removal of appearance controls from auth/top navbar remain preserved.
+
+Final executed verification: `npm run lint`, `npm run typecheck`, `npm run build`, `npm test` (49/49 unit/PostgreSQL cases), `npm run test:http` (1/1 production HTTP lifecycle) and `npm run test:e2e` (18/18 desktop/mobile cases in 3.2 minutes) passed. The first browser run passed 17/18 and exposed the new nested table scroll container without keyboard focus on mobile. Added a focusable visible-outline container and a real arrow-key horizontal scrolling assertion; the final full run passed without excluding axe rules. Keyboard disclosure coverage confirms receipt preview collapse/reopen preserves its blob URL, and exact group shares open correctly. Existing real checkbox save/repayment, two-user isolation, optimistic form behavior, chart/category filters, exact progress and theme persistence checks remain passing.
+
+Both themes and desktop/360px accessibility scans passed, with tablet/short-landscape navigation and forced-color/reduced-preference coverage retained. Desktop/mobile receipt and desktop budget screenshots were inspected. `git diff --check` passed. No images, raw extraction output or credentials were persisted in documentation; synthetic ignored screenshots remain test artifacts. Manual assistive technology, physical-device and other-browser checks were not performed for this milestone.
+
+No application model/migration, authentication strategy, server authorization, financial calculation, extraction provider or dependency changed. No commit, push or deployment. Manual screen readers, physical devices and Firefox/WebKit remain unverified.
+
+## 2026-11-08 — Remove redundant Appearance selectors
+
+Removed the shared Appearance control/import from the login/sign-up form and its instance in the top application navbar, as requested. Sidebar/mobile drawer and account Settings controls remain; persisted themes still apply globally, including authentication pages. No authentication, data or theme-selection behavior changed. Updated SETUP/UI_THEME to describe the remaining control locations.
+
+Lint, typecheck, production build and `git diff --check` passed. Browser/financial test suites were not rerun for this small presentation-only removal. Existing unrelated work was preserved; no commit, push or deployment.
+
+## 2026-11-08 — More transparent Frosted panels and inline appearance controls
+
+Reduced only Frosted Glass panel opacity from 78% to 45%, retaining exact text/financial colors, 16px blur and opaque field/popover/accessibility fallbacks. Dark Base remains opaque. Appearance labels and selectors now share one row across sidebar/header, authentication and account settings. Header/auth wrappers are wider, and compact label/arrow spacing keeps the full selected theme readable in the sidebar. Existing stored appearance choices and all financial behavior are unchanged.
+
+Verification: production build, lint, typecheck and `git diff --check` passed. Both final focused workspace Playwright cases passed in 24.7 seconds, covering desktop/mobile plus tablet/short-landscape, both-theme axe/width checks, persisted preference, navigation and preserved input drafts. Desktop screenshot review caught and corrected initial sidebar option clipping before the final check. Full financial test suites were not rerun for this presentation-only change. No commit, push or deployment.
+
 ## 2026-11-08 — User-supplied background across all pages
 
 Applied the user's supplied frosted-glass photograph globally through `body::before`, covering public authentication and every protected page in both themes. The background stays fixed to the viewport with centered cover cropping and an 80% dark overlay to preserve existing text/chart contrast. Existing reduced-transparency, forced-colors and print modes keep plain backgrounds. No forms, authentication or financial calculations changed.

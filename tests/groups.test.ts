@@ -16,6 +16,7 @@ import {
 } from "../features/groups/schemas";
 import {
   createGroup,
+  deleteGroup,
   addMember,
   listGroups,
   loadGroup,
@@ -25,6 +26,7 @@ import {
   recordSettlement,
 } from "../features/groups/store";
 import { loadDashboard } from "../features/dashboard/store";
+import { assertLocalTestDatabase } from "./e2e/database";
 
 const a = "aaaaaaaa-0000-4000-8000-000000000001";
 const b = "bbbbbbbb-0000-4000-8000-000000000002";
@@ -242,6 +244,83 @@ const bill = (group: Awaited<ReturnType<typeof fixture>>) => ({
     value: ["20", "30", "50"][index],
   })),
   submissionKey: randomUUID(),
+});
+
+test("confirmed group deletion is owned, stale-safe, atomic and separate from personal transactions", async () => {
+  assertLocalTestDatabase();
+  const group = await fixture();
+  const other = await fixture(users[1]);
+  const expense = bill(group);
+  const saved = await createExpense(users[0], expense);
+  await createExpense(users[1], bill(other));
+  await recordSettlement(users[1], {
+    groupId: other.groupId, fromMemberId: other.members[1], toMemberId: other.members[0],
+    amount: "5", occurredOn: "2026-11-07", submissionKey: randomUUID(), confirmed: "yes",
+  });
+  await recordSettlement(users[0], {
+    groupId: group.groupId, fromMemberId: group.members[1], toMemberId: group.members[0],
+    amount: "30", occurredOn: "2026-11-07", submissionKey: randomUUID(), confirmed: "yes",
+  });
+  const category = await prisma.category.findUniqueOrThrow({ where: { key: "expense-food" } });
+  const personal = await prisma.transaction.create({ data: {
+    ownerId: users[0], type: "EXPENSE", categoryId: category.id, amountMinor: BigInt(77),
+    occurredOn: new Date("2026-11-07T00:00:00Z"), submissionKey: randomUUID(),
+  } });
+  try {
+    const listed = (await listGroups(users[0])).find((row) => row.id === group.groupId)!;
+    const deletion = { groupId: group.groupId, updatedAt: listed.updatedAt.toISOString(), confirmed: "yes" };
+    for (const principal of [users[1], null, randomUUID()]) await assert.rejects(deleteGroup(principal, deletion));
+    await assert.rejects(deleteGroup(users[0], { ...deletion, confirmed: "no" }));
+    await assert.rejects(deleteGroup(users[0], { ...deletion, updatedAt: "invalid" }));
+    await assert.rejects(deleteGroup(users[0], { ...deletion, ownerId: users[1] }));
+    const { submissionKey, ...fields } = expense;
+    void submissionKey;
+    await editExpense(users[0], { ...fields, id: saved.id, version: 1, amount: "101", shares: group.members.map((memberId, index) => ({ memberId, value: ["21", "30", "50"][index] })) });
+    await assert.rejects(deleteGroup(users[0], deletion));
+    const preserved = (await loadGroup(users[0], group.groupId))!;
+    assert.equal(preserved.expenses[0].amount, "101");
+    assert.equal(preserved.settlements.length, 1);
+    assert.equal(preserved.members.length, 3);
+    const latest = (await listGroups(users[0])).find((row) => row.id === group.groupId)!;
+    assert.ok(latest.updatedAt > listed.updatedAt);
+    const before = await loadDashboard(users[0], { from: "2026-11-01", to: "2026-11-30" });
+    const results = await Promise.allSettled([
+      deleteGroup(users[0], { ...deletion, updatedAt: latest.updatedAt.toISOString() }),
+      deleteGroup(users[0], { ...deletion, updatedAt: latest.updatedAt.toISOString() }),
+    ]);
+    assert.equal(results.filter((result) => result.status === "fulfilled").length, 1);
+    assert.equal(await loadGroup(users[0], group.groupId), null);
+    assert.deepEqual(await Promise.all([
+      prisma.groupMember.count({ where: { groupId: group.groupId } }),
+      prisma.groupExpense.count({ where: { groupId: group.groupId } }),
+      prisma.expenseShare.count({ where: { groupId: group.groupId } }),
+      prisma.settlement.count({ where: { groupId: group.groupId } }),
+    ]), [0, 0, 0, 0]);
+    const otherHistory = (await loadGroup(users[1], other.groupId))!;
+    assert.equal(otherHistory.expenses.length, 1);
+    assert.equal(otherHistory.settlements.length, 1);
+    assert.ok(await prisma.transaction.findUnique({ where: { id: personal.id } }));
+    const after = await loadDashboard(users[0], { from: "2026-11-01", to: "2026-11-30" });
+    assert.equal(after.expense, before.expense);
+    assert.equal(after.balance, before.balance);
+  } finally {
+    await prisma.transaction.deleteMany({ where: { id: personal.id } });
+  }
+});
+
+test("deleting an empty group preserves the owner's other group history", async () => {
+  assertLocalTestDatabase();
+  const other = await fixture();
+  await createExpense(users[0], bill(other));
+  const id = randomUUID();
+  groups.push(id);
+  await createGroup(users[0], { id, name: "Empty group", selfName: "A" });
+  const empty = (await listGroups(users[0])).find((row) => row.id === id)!;
+  await deleteGroup(users[0], { groupId: id, updatedAt: empty.updatedAt.toISOString(), confirmed: "yes" });
+  assert.equal(await loadGroup(users[0], id), null);
+  const preserved = (await loadGroup(users[0], other.groupId))!;
+  assert.equal(preserved.expenses.length, 1);
+  assert.equal(preserved.members.length, 3);
 });
 
 test("group request schemas validate names, dates, amounts and settlement direction/confirmation", () => {

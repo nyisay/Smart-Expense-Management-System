@@ -25,7 +25,7 @@ export default async function ReceiptUploadPage() {
           Upload, review, then confirm. You control what gets saved.
         </p>
       </header>
-      <ReceiptUploadForm key={randomUUID()} categories={categories} />
+      <ReceiptUploadForm key={randomUUID()} categories={categories} usesCloud={process.env.RECEIPT_PROVIDER === "ollama-cloud"} />
     </main>
   );
 }

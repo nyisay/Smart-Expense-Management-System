@@ -13,6 +13,7 @@ import type { ReceiptSuggestion } from "./schemas";
 import { previousReviewSchema } from "./schemas";
 
 export type ExtractionState = {
+  ok: boolean;
   message: string;
   suggestion?: ReceiptSuggestion;
   reviewKey?: string;
@@ -30,6 +31,7 @@ export async function extractReceiptAction(
   const previous = previousReviewSchema.safeParse(_state);
   const failed = (message: string): ExtractionState => ({
     ...(previous.success ? previous.data : {}),
+    ok: false,
     message,
   });
   try {
@@ -39,6 +41,7 @@ export async function extractReceiptAction(
       );
     const suggestion = await extractReceipt(user.id, form.get("image"));
     return {
+      ok: true,
       message: "Review every field before saving. Nothing has been saved yet.",
       suggestion,
       reviewKey: randomUUID(),
@@ -47,7 +50,7 @@ export async function extractReceiptAction(
     return failed(
       error instanceof ReceiptError
         ? error.message
-        : "Extraction unavailable or returned invalid data. Check local Ollama, retry, or enter the expense manually.",
+        : "Extraction unavailable or returned invalid data. Retry or enter the expense manually.",
     );
   }
 }

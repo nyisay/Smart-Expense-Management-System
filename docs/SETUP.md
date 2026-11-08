@@ -1,8 +1,49 @@
 # Local setup and verification
 
+## Optional Ollama Cloud receipt extraction (D-08)
+
+Local Ollama remains the default. For hosted receipt processing, create a private key using [Ollama Cloud](https://docs.ollama.com/cloud), check your account's usage limits, and select a cloud API model supporting images. No local Ollama service/download is required in cloud mode. Model availability and receipt accuracy must be verified separately; the API model name can differ from the local CLI's `:cloud` name. Current official cloud documentation uses `gemma4:31b`, whose [model page](https://ollama.com/library/gemma4) lists image support.
+
+Set these privately in `.env` for local Next.js testing, or in Vercel's server environment for deployment:
+
+```dotenv
+RECEIPT_PROVIDER="ollama-cloud"
+OLLAMA_API_KEY="REPLACE_WITH_YOUR_PRIVATE_KEY"
+OLLAMA_MODEL="gemma4:31b"
+```
+
+Restart `npm.cmd run dev` after local changes; redeploy after changing Vercel variables. Never commit `.env`, prefix these variables with `NEXT_PUBLIC_`, paste keys into chat, or print environment values. `OLLAMA_BASE_URL` is ignored in cloud mode; the endpoint is fixed to `https://ollama.com/api/chat`. `OLLAMA_NO_CLOUD=1` configures a local Ollama process only; it does not control this direct HTTPS adapter.
+
+Ollama Cloud receives prepared receipt pixels and expense category IDs/names. The app strips image metadata and does not store images/raw output; external processing is subject to Ollama's privacy terms. Cloud currently has [no enforced structured outputs](https://docs.ollama.com/capabilities/structured-outputs); prompted JSON is strictly validated before review. Review/correct every field and explicitly confirm before saving. Keys, images and provider bodies are not logged. Denied access, usage limits, timeouts or invalid output keep previous review values and allow manual entry. There is no automatic retry or provider fallback.
+
+Uploads are limited to **4 MB (4,000,000 bytes)** in both modes, with a 4,400,000-byte action-body limit below [Vercel's 4.5 MB request ceiling](https://vercel.com/docs/functions/limitations). Crop/compress larger images before selection. This replaces the old 10 MiB allowance. Configure the hosted function duration to exceed the 60-second cloud request deadline plus image/database processing; verify it against your Vercel plan. Keep the Node.js runtime for Sharp, PostgreSQL and password hashing. Hosted connections and representative cloud extraction still require manual verification; mocked tests do not prove OCR quality.
+
+Manual cloud checks after configuration:
+
+- Open `/receipts/new`; confirm the Ollama Cloud privacy notice appears before uploading.
+- Select an image above 4,000,000 bytes; confirm visible validation and no extraction request. Then select a valid JPG/PNG/WebP and confirm the error clears.
+- Extract a non-sensitive sample; compare merchant, total, date, currency and category with the image. Ambiguous fields should require correction; extraction alone must not save anything.
+- Correct fields, confirm and save once. Check the owned transaction, exact dashboard/budget totals and another account's isolation.
+- Check invalid/revoked key, usage-limit and unavailable model failures without revealing upstream details. Confirm a failed replacement extraction preserves an existing review.
+- Switch back to `RECEIPT_PROVIDER="ollama-local"` and restore the local model/base URL when returning to the local instructions below.
+
+## Delete a previous group history
+
+Open **Groups & Splitting** and use the trash-icon **Delete group** button on the intended group card. Review the name and participant/bill/repayment counts. Cancel keeps the history; **Delete group permanently** removes that group's participants, bills/shares and recorded repayments. This cannot be undone and does not refund external payments. Personal transactions and other groups remain unchanged.
+
+If another tab changes the group while confirmation is open, deletion is rejected. Reload the list and review the updated history before confirming again. No migration or new environment variable is needed.
+
+## Toast feedback checks
+
+- Submit an empty registration/login form: expect one input-error toast and native focus on the first invalid field.
+- Register valid details: expect generic registration feedback without confirmation that a particular email exists. Sign in correctly: expect a success toast after the dashboard opens.
+- Submit wrong sign-in details twice: each attempt should show a fresh generic error notice; no successful-login notification should appear. Inline feedback remains available after dismissal.
+- Correct transaction/group/budget/receipt form errors and submit again. On mobile, notices appear above forms rather than covering Save buttons. Receipt extraction success says review is required; it never means an expense was automatically saved.
+- Use Dismiss or F8 keyboard navigation. Check both themes and forced colors; notifications contain no passwords, session data or extracted receipt fields. Notifications are temporary UI state, not persisted authentication.
+
 ## Appearance and navigation (D-06)
 
-Dark Base is the default. Choose **Frosted Glass** using Appearance in the desktop sidebar/header, mobile navigation drawer, account Settings (`/app`) or authentication page. The browser retains only this appearance choice between visits. If storage is disabled, controls still work for the current visit.
+Dark Base is the default. Choose **Frosted Glass** using Appearance in the desktop sidebar, mobile navigation drawer or account Settings (`/app`). Login/sign-up and the top navbar do not display an Appearance selector. The browser retains only this appearance choice between visits, including on authentication pages. If storage is disabled, controls still work for the current visit.
 
 Desktop navigation has a collapse/expand control; icon links expose names/tooltips. On tablet/mobile, use **Open navigation**, select a destination or press Escape to close. Analytics navigates to the existing dashboard chart section; Settings uses the existing account page. No standalone empty Analytics/Settings routes were added.
 
@@ -26,8 +67,10 @@ Copy `.env.example` to `.env` only when no local environment file already exists
 | DIRECT_URL | Direct PostgreSQL connection for Prisma CLI migrations |
 | AUTH_SECRET | Cryptographically random secret, at least 32 characters; stable across restarts/instances |
 | AUTH_URL | Canonical application origin: local HTTP during development, HTTPS in production |
-| OLLAMA_BASE_URL | Optional server-only loopback HTTP origin; default http://127.0.0.1:11434 |
-| OLLAMA_MODEL | Optional local vision model; default gemma3:4b; cloud suffixes rejected |
+| RECEIPT_PROVIDER | ollama-local (default) or explicitly selected ollama-cloud |
+| OLLAMA_BASE_URL | Local mode only: loopback HTTP origin; default http://127.0.0.1:11434 |
+| OLLAMA_MODEL | Local default gemma3:4b; cloud requires an explicit vision-capable API model name |
+| OLLAMA_API_KEY | Cloud mode only: private server-side API key; never expose publicly |
 
 The application validates server configuration without printing its values. The checked-in example is deliberately unusable until placeholders are replaced. The local foundation task generated AUTH_SECRET and added a local AUTH_URL only when missing; existing database credentials were preserved.
 
@@ -97,9 +140,9 @@ ollama pull gemma3:4b
 
 Alternatively set OLLAMA_NO_CLOUD=1 in Windows user environment variables and restart the Ollama application, as described in the [official FAQ](https://docs.ollama.com/faq). This variable must reach the Ollama process; putting it only in the Next.js `.env` does not configure a separate service. The model download needs Internet access and several GB of disk/memory; inference after download is local. No cloud sign-in or paid API key is required. A local model and sufficient hardware are prerequisites, not installed automatically by the app. The official model page lists [gemma3:4b as vision-capable](https://ollama.com/library/gemma3); 270m/1b variants are text-only.
 
-Keep `OLLAMA_BASE_URL` / `OLLAMA_MODEL` in the server `.env` only if overriding their defaults. Start Next.js normally with `npm.cmd run dev` in another terminal, sign in and open `/receipts/new`. The application server and Ollama must share the same trusted host; remote/container hosting needs a separately reviewed setup. The adapter follows Ollama's current [chat API](https://docs.ollama.com/api/chat), [base64 vision input](https://docs.ollama.com/capabilities/vision), and [JSON-schema structured outputs](https://docs.ollama.com/capabilities/structured-outputs).
+Keep `OLLAMA_BASE_URL` / `OLLAMA_MODEL` in the server `.env` only if overriding their defaults, and use `RECEIPT_PROVIDER="ollama-local"` when switching from cloud. Start Next.js normally with `npm.cmd run dev` in another terminal, sign in and open `/receipts/new`. Local mode requires the application server and Ollama to share the same trusted host; use the approved cloud instructions above for hosted extraction. The local adapter follows Ollama's current [chat API](https://docs.ollama.com/api/chat), [base64 vision input](https://docs.ollama.com/capabilities/vision), and [JSON-schema structured outputs](https://docs.ollama.com/capabilities/structured-outputs).
 
-Uploads accept static JPG/PNG/WebP up to 10 MiB and 20 megapixels. The server checks MIME/signatures, fully decodes with Sharp, strips metadata and resizes to at most 2400px per side. It sends pixels only to loopback Ollama, with no disk/database image storage, raw OCR logging or server-retained suggestions. Only explicitly confirmed transaction fields are saved; the Receipt metadata table is not used by this flow. Reloading clears unsaved review state; SPA navigation can temporarily retain form state in browser memory. No localStorage/sessionStorage persistence is used. Operators must also avoid sensitive proxy/Ollama debug logging and protect host memory/crash dumps.
+Uploads accept static JPG/PNG/WebP up to 4 MB (4,000,000 bytes) and 20 megapixels. The server checks MIME/signatures, fully decodes with Sharp, strips metadata and resizes to at most 2400px per side. Local mode sends pixels only to loopback Ollama, with no disk/database image storage, raw OCR logging or server-retained suggestions. Only explicitly confirmed transaction fields are saved; the Receipt metadata table is not used by this flow. Reloading clears unsaved review state; SPA navigation can temporarily retain form state in browser memory. No localStorage/sessionStorage persistence is used. Operators must also avoid sensitive proxy/Ollama debug logging and protect host memory/crash dumps.
 
 Review merchant, final total, date, currency and category. Unknown/uncertain values are blank and flagged; unsupported/unknown currency also clears the amount. Only positive whole-kyat MMK expenses can be confirmed. The app never converts currencies. Correcting a review field clears the confirmation checkbox. Saving uses the existing owner-scoped retry-safe expense path and refreshes dashboard totals. Validation/save failures retain entered values in the hydrated React form. No-JavaScript progressive form behavior is not a substitute for the supported interactive React review flow.
 
@@ -114,7 +157,7 @@ Choose a sharp, straight, well-lit photo with the merchant/date/final total visi
 Manual receipt checks:
 
 - [ ] Start local-only Ollama, pull gemma3:4b and confirm a non-sensitive printed receipt reaches the editable review. Record model/version, language, correctness, latency and memory for several real samples; do not commit sensitive pixels or raw output.
-- [ ] Check JPG, PNG and WebP; reject mismatched MIME, corrupt/animated images, files above 10 MiB and images above 20 megapixels without extraction.
+- [ ] Check JPG, PNG and WebP; reject mismatched MIME, corrupt/animated images, files above 4,000,000 bytes and images above 20 megapixels without extraction.
 - [ ] Check a receipt with subtotal/tax/change/multiple totals, an ambiguous date, unreadable fields and unknown/non-MMK currency. Correct suggestions and verify no invented date/currency or automatic conversion is accepted.
 - [ ] Confirm extraction alone leaves transaction/dashboard counts unchanged. Edit every field, check confirmation, save once and verify the owned transaction and matching dashboard date/category totals; retry must not duplicate it.
 - [ ] Stop Ollama or select a missing model; verify safe failure, retry/manual entry and no sensitive logs. Reject unsigned and cross-origin actions.

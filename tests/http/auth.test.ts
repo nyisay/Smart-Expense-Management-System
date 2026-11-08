@@ -90,6 +90,7 @@ test(
           AUTH_SECRET: secret,
           OLLAMA_BASE_URL: `http://127.0.0.1:${ollamaAddress.port}`,
           OLLAMA_MODEL: "gemma3:4b",
+          RECEIPT_PROVIDER: "ollama-local",
         },
         stdio: ["ignore", "pipe", "pipe"],
         windowsHide: true,

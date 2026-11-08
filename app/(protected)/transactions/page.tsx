@@ -1,3 +1,4 @@
+import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import Link from "next/link";
 import { Plus, ArrowDownLeft, ArrowUpRight, ReceiptText } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -170,36 +171,36 @@ export default async function TransactionsPage({
               ))}
             </div>
             <div className="hidden overflow-x-auto rounded-xl border bg-card md:block">
-              <table className="w-full text-left text-sm">
-                <caption className="sr-only">
+              <Table className="w-full text-left text-sm">
+                <TableCaption className="sr-only">
                   Your transactions, newest date first. Amounts are whole MMK.
-                </caption>
-                <thead className="border-b bg-muted/40 text-xs text-muted-foreground">
-                  <tr>
-                    <th scope="col" className="px-5 py-4 font-medium">
+                </TableCaption>
+                <TableHeader className="border-b bg-muted/40 text-xs text-muted-foreground">
+                  <TableRow>
+                    <TableHead scope="col" className="px-5 py-4 font-medium">
                       Transaction
-                    </th>
-                    <th scope="col" className="px-4 py-4 font-medium">
+                    </TableHead>
+                    <TableHead scope="col" className="px-4 py-4 font-medium">
                       Category
-                    </th>
-                    <th scope="col" className="px-4 py-4 font-medium">
+                    </TableHead>
+                    <TableHead scope="col" className="px-4 py-4 font-medium">
                       Date
-                    </th>
-                    <th
+                    </TableHead>
+                    <TableHead
                       scope="col"
                       className="px-4 py-4 text-right font-medium"
                     >
                       Amount
-                    </th>
-                    <th scope="col" className="px-5 py-4">
+                    </TableHead>
+                    <TableHead scope="col" className="px-5 py-4">
                       <span className="sr-only">Actions</span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="divide-y">
                   {result.records.map((record) => (
-                    <tr key={record.id} className="hover:bg-muted/20">
-                      <td className="max-w-64 px-5 py-4">
+                    <TableRow key={record.id} className="hover:bg-muted/20">
+                      <TableCell className="max-w-64 px-5 py-4">
                         <div className="flex items-center gap-3">
                           <span className="rounded-lg bg-muted p-2">
                             {record.type === "INCOME" ? (
@@ -223,20 +224,20 @@ export default async function TransactionsPage({
                             </p>
                           </div>
                         </div>
-                      </td>
-                      <td className="px-4 py-4">
+                      </TableCell>
+                      <TableCell className="px-4 py-4">
                         <Badge variant="secondary">{record.categoryName}</Badge>
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-4">
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap px-4 py-4">
                         <time dateTime={record.occurredOn}>
                           {record.occurredOn}
                         </time>
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-4 text-right font-medium tabular-nums">
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap px-4 py-4 text-right font-medium tabular-nums">
                         {record.type === "INCOME" ? "+" : "−"}
                         {formatAmount(record.amount)}
-                      </td>
-                      <td className="px-5 py-4 text-right">
+                      </TableCell>
+                      <TableCell className="px-5 py-4 text-right">
                         <Button size="sm" variant="ghost" asChild>
                           <Link
                             href={transactionDetailHref(record.id, returnTo)}
@@ -245,11 +246,11 @@ export default async function TransactionsPage({
                             View
                           </Link>
                         </Button>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
           </>
         )}

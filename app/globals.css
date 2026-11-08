@@ -104,7 +104,7 @@ html[data-theme="frosted"] {
 }
 
 @supports (backdrop-filter: blur(16px)) or (-webkit-backdrop-filter: blur(16px)) {
-  html[data-theme="frosted"] { --card: rgb(25 31 48 / 78%); --panel-blur: 16px; }
+  html[data-theme="frosted"] { --card: rgb(25 31 48 / 45%); --panel-blur: 16px; }
 }
 
 @layer components {

@@ -1,6 +1,14 @@
 # Architecture
 
+## Whole-group history deletion (D-07)
+
+The owner-confirmed Delete group action on `/groups` removes one complete group history: repayments, expenses (whose shares already cascade), participants and group, all inside the existing owned-group row lock/transaction. Server authentication, strict Zod input and owner predicates are mandatory. Existing Group.updatedAt serves as the confirmation revision; successful group mutations advance it monotonically using the database clock. A stale list/dialog is rejected instead of silently removing changed history. Group deletion revalidates the list/nested routes and returns success feedback. Personal transactions are never touched; no schema, migration or dependency is added.
+
+This explicitly approved operation is the exception to the earlier retained-history/group-deletion deferrals below. Individual repayment correction/deletion and individual member deletion remain deferred; deleting a bill still retains repayments. Removing a whole group never refunds or executes an external payment.
+
 ## Shared presentation shell (D-06)
+
+Toast follow-up: the root layout mounts a single client `Toaster` inside Suspense. A small form-feedback hook observes action result objects and publishes generic success/error notices without changing server authorization or auth actions. Auth success follows the existing login redirect using a short-lived in-memory UI intent; no extra authentication request, URL flag, cookie or persisted token is introduced. Receipt extraction adds only a UI-result `ok` flag; extraction/review/save boundaries remain unchanged. Installed Radix supplies notification behavior with no new package.
 
 The protected layout retains its server-side `requireUser()` and Suspense boundary, then passes minimal profile fields and server-rendered page children to `components/application-shell.tsx`. The client shell owns only navigation collapse/drawer/profile interaction. Every existing data query/action still authorizes separately. No private data is moved into shared caching or browser storage.
 
@@ -27,7 +35,7 @@ app/                        # public auth pages, protected shell, Auth.js handle
 features/auth/              # Zod schemas, service, password hashing, throttles, actions, form
 features/transactions/      # schemas, owner-scoped store, session wrappers, actions, forms
 features/dashboard/         # filters, PostgreSQL aggregation, exact summaries, Recharts views
-features/receipts/          # image validation, local provider, suggestions, explicit review/save
+features/receipts/          # image validation, local/cloud Ollama, suggestions, explicit review/save
 features/groups/            # exact allocations, owned group ledger, balances, forms/actions
 components/ui/              # official shadcn/ui primitives
 lib/                        # server env, Prisma singleton, exact money, ownership queries
@@ -49,7 +57,7 @@ shadcn/ui is initialized with the official CLI's Radix/nova preset and Tailwind 
 | `/dashboard` | Protected financial overview, shared date/category filters, charts and recent records |
 | `/transactions` | Owner-scoped list, URL filters, 20-row pagination |
 | `/transactions/new` | Income/expense creation with retry key |
-| `/receipts/new` | Protected temporary upload, local extraction and editable confirmation |
+| `/receipts/new` | Protected temporary upload, selected Ollama extraction and editable confirmation |
 | `/groups`, `/groups/new` | Owner-scoped group list and retry-safe creation with one self label |
 | `/groups/[groupId]` | Participants, all bills/shares, repayment history, balances and suggested repayments |
 | `/groups/[groupId]/members/new` | Add a named participant/guest |
@@ -60,7 +68,7 @@ shadcn/ui is initialized with the official CLI's Radix/nova preset and Tailwind 
 | `/transactions/[id]/edit` | Owned transaction correction with version check |
 | `/api/auth/[...nextauth]` | Auth.js GET/POST protocol handlers, built-in CSRF |
 
-The protected layout reads the session inside Suspense; every data-access wrapper/action also authorizes independently. requireUser waits for a real request before Auth.js runs cryptographic operations. No shared caching of private data. The group detail includes a confirmed bill-delete action; group/member deletion and repayment correction/deletion are deferred.
+The protected layout reads the session inside Suspense; every data-access wrapper/action also authorizes independently. requireUser waits for a real request before Auth.js runs cryptographic operations. No shared caching of private data. The group detail includes a confirmed bill-delete action; whole-group deletion is supported under D-07, while individual member deletion and repayment correction/deletion remain deferred.
 
 Transaction queries/actions resolve the session on the server and call an internal server-only store with that user ID. The store validates inputs with Zod, rejects missing/deleted principals, applies owner predicates to every financial operation, validates category/type pairs, and serializes amounts/dates for UI. Store principal arguments are for trusted server callers/tests, never request-supplied identity. Create/update/delete are exposed only through authenticated Server Actions with Next.js origin checks. There is no financial REST API.
 
@@ -109,7 +117,7 @@ Money stays bigint/string in MMK. Amount shares are nonnegative whole kyat and s
 
 Group detail reads the owner-scoped members, expenses/shares and repayments in one RepeatableRead transaction. A pure calculator derives paid, owed, sent, received and net = paid − owed + sent − received; all nets must sum to zero. A deterministic debtor/creditor matching pass creates advisory "who owes whom" amounts without writes. It does not claim a globally optimal number of transfers. Histories are loaded in full for this MVP; move aggregation/pagination to PostgreSQL when group histories grow large.
 
-Repayment confirmation records a positive completed external transfer between distinct participants, with a stable group submission key. Overpayments are allowed as actual recorded events and may reverse net balances. Editing/deleting a bill replaces/removes its shares but preserves repayment history. Settlements are append-only; correction/deletion is outside this slice and stated in the UI. No bill or repayment calls personal transaction creation or revalidates financial dashboard data; dashboard accounting remains unchanged. Group mutations revalidate /groups.
+Repayment confirmation records a positive completed external transfer between distinct participants, with a stable group submission key. Overpayments are allowed as actual recorded events and may reverse net balances. Editing/deleting a bill replaces/removes its shares but preserves repayment history. Individual settlements remain append-only; D-07 permits their removal only with the entire confirmed group history. No bill or repayment calls personal transaction creation or revalidates financial dashboard data; dashboard accounting remains unchanged. Group mutations revalidate /groups.
 
 ## Currency, dates, and accounting
 
@@ -131,9 +139,9 @@ Server Actions use Next.js origin checks; direct Auth.js POST routes use its CSR
 
 ## Receipt and deployment boundaries
 
-Receipt extraction uses authenticated Server Actions and the existing origin checks. The action body limit is 11 MiB for multipart overhead; the image itself is limited to 10 MiB. Sharp 0.35.5 is a direct dependency for full decoding, signature/MIME agreement, 20-megapixel and single-frame limits, metadata stripping and a maximum 2400px side before inference. No image is written to disk or PostgreSQL. Existing AuthThrottle counters also bound receipt extraction attempts.
+Receipt extraction uses authenticated Server Actions and the existing origin checks. The image limit is 4,000,000 bytes (4 MB); the action body limit is 4,400,000 bytes to allow multipart/review overhead below Vercel's 4.5 MB ceiling (D-08). Shared client/server constants align accepted MIME types, byte limit and validation text; native client validity blocks oversized uploads before transmission, while server validation remains authoritative. Sharp 0.35.5 is a direct dependency for full decoding, signature/MIME agreement, 20-megapixel and single-frame limits, metadata stripping and a maximum 2400px side before inference. No image is written to disk or PostgreSQL. Existing AuthThrottle counters also bound receipt extraction attempts.
 
-The server-only ReceiptExtractor accepts prepared bytes and expense category IDs/names. Its Ollama adapter sends a non-streaming /api/chat request with Zod-derived JSON schema and base64 pixels; fetch is uncached, redirects rejected, loopback HTTP URLs only, cloud model suffixes rejected, timeout 120 seconds and response at most 64 KiB. gemma3:4b is the default; the host must install it and disable Ollama cloud features. There is no paid API key or client provider configuration.
+The server-only ReceiptExtractor accepts prepared bytes and expense category IDs/names. Its Ollama adapter selects server configuration using RECEIPT_PROVIDER, defaulting to ollama-local. Local mode retains loopback HTTP only, rejected cloud model suffixes, Zod-derived JSON-schema output, default gemma3:4b and a 120-second timeout. Optional ollama-cloud pins HTTPS to https://ollama.com/api/chat, authenticates with a private OLLAMA_API_KEY, requires an explicit vision-capable API model name, ignores OLLAMA_BASE_URL and times out after 60 seconds. Cloud currently lacks structured-output enforcement: omit format, prompt for the same JSON schema and strictly validate complete JSON (optionally one JSON code fence). Both modes send base64 prepared pixels, use non-streaming uncached requests, reject redirects and bound responses to 64 KiB. Incomplete/invalid responses and upstream errors become sanitized review-safe messages. No automatic retries, provider SDK, client key or silent provider fallback is added. The client receives only a public boolean for the selected mode's privacy/loading text.
 
 Zod checks all output and blanks uncertain/invalid fields. Currency never defaults to MMK; unsupported/unknown currency also blanks amount. React holds editable suggestions only in memory. A separately authenticated action validates explicit confirmation/currency and delegates to the existing owned EXPENSE creation path with a stable per-review UUID retry key. It ignores submitted identity by constructing only allowed fields, revalidates transactions/dashboard, and redirects to the saved transaction. Reviewed transaction fields are the sole persistence; Receipt metadata remains unused. No schema/migration change. Mock transport/service tests and real HTTP confirmation cover this boundary; real OCR quality is a manual prerequisite.
 
