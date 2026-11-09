@@ -1,5 +1,25 @@
 # Progress and handoff
 
+## 2026-11-09 — Confirmed unavailable cloud model configuration
+
+The user confirmed the deployed toast is “Ollama cloud extraction failed. Retry later or enter the expense manually.” and Vercel Production OLLAMA_MODEL is `gemma3:4b`. A fresh read-only request to https://ollama.com/api/tags returned HTTP 200: `gemma3:4b` is absent and `gemma4:31b` is present. This confirms a deployed model configuration defect consistent with the reproduced upstream HTTP failure; the exact upstream HTTP status remains hidden by the generic error message.
+
+The required correction is in Vercel's Production environment: change OLLAMA_MODEL to the listed vision-capable API model `gemma4:31b`, keep RECEIPT_PROVIDER=ollama-cloud and the existing private key, then apply those settings through a new production deployment. Do not change the default local gemma3:4b configuration or weaken provider validation. No application code fix, dependency change, database write, key replacement or migration is required for this configuration defect. Production settings/deployment cannot be modified through the available connector; the user must apply the documented correction. No deployment or push was performed.
+
+Verification after the corrected deployment remains pending. Model availability alone does not prove account access, sufficient usage or accurate extraction, so the earlier failing smoke test is not marked fixed. Next: confirm the new deployment is Ready, repeat one synthetic receipt extraction, verify review before saving and remove the disposable account. No additional inference was attempted during this catalog check.
+
+## 2026-11-09 — Deployed receipt failure reproduced; configuration detail pending
+
+The user requested testing and fixing a suspected Ollama Cloud extraction error after deploying. Read the receipt implementation and accepted boundaries; preserved the existing modified .env.example without printing values. The deployed `/login` returns HTTP 200. The public Ollama cloud model list returns HTTP 200 and includes the documented `gemma4:31b` API model. A read-only query against the configured database succeeded and found four expense categories. No database suite was run because the configured database is not the local test target.
+
+Executed `node --conditions=react-server --import tsx --test tests/receipt-provider.test.ts`: all five deterministic cloud adapter cases passed. Next.js development environment loading still selects local Ollama, with the local model and no cloud key, so it cannot reproduce direct cloud inference locally. Environment checks emitted only presence/mode flags, not credentials or connection strings. These local settings do not establish the deployed environment values.
+
+Performed one live deployed browser diagnostic using an in-memory synthetic receipt and a generated disposable account. Verified that the account was present in the configured database before attempting extraction. The deployed page displays the Ollama Cloud privacy notice, confirming cloud mode for this deployment. Extraction reproducibly returned **“Ollama Cloud extraction failed.”** This is the adapter's unsuccessful/empty upstream HTTP response path, before envelope/JSON parsing, distinct from its access-denied, usage-limit and timeout/invalid-output messages. No upstream status/body is available from this generic client message, so the cause cannot yet be narrowed to model/request configuration, account billing or service availability. Do not claim a model-thinking/JSON fix for this observed symptom.
+
+The disposable account had zero transactions and was removed afterward. No real receipt, extracted field, password, session token or API key was printed or retained. No expense was saved, deployment changed, commit made or code pushed. The live attempt may consume provider usage; deterministic suites still use mocks only. The pg driver emitted a non-failing future SSL-mode semantics warning; TLS was not weakened or reconfigured.
+
+Requested the exact on-screen error/location and then the safe `OLLAMA_MODEL` value from Vercel Production. Next step: verify the deployed API model name against the public catalog; if correctly configured, use a privately configured local cloud key or sanitized upstream status to reproduce the failing provider request. Application code has not been changed while the underlying cause is unconfirmed. Lint/typecheck/build and full integration/browser suites were not rerun for this diagnosis-only handoff. Receipt cloud extraction remains **failing on the deployed smoke check**, not verified complete.
+
 ## 2026-11-09 — Optional Ollama Cloud extraction and Vercel-safe receipt uploads
 
 The user selected Ollama Cloud and explicitly requested deployment instruction step 6. D-08 records approval for this bounded integration, superseding the local-only provider restriction while preserving local mode as the default. No deployment, commit, push, schema/migration, dependency, authentication or financial-calculation change was performed. Existing unrelated working changes were preserved.

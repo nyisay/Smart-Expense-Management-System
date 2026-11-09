@@ -1,5 +1,11 @@
 # Implementation tasks
 
+## Deployed Ollama Cloud failure — Investigating 2026-11-09
+
+- [x] Reproduce the live failure with one synthetic receipt and a disposable account, verify cloud mode, confirm zero saved transactions and remove the fixture. Check public site/model availability, database category prerequisites and the five mocked adapter tests without revealing credentials.
+- [x] Obtain the Vercel Production OLLAMA_MODEL value: the user confirmed gemma3:4b. Verify against the public API catalog: gemma3:4b is absent, gemma4:31b is present. Identify the required environment-only correction; no application code, local default, key or migration change is needed for this confirmed configuration defect.
+- [ ] User applies OLLAMA_MODEL=gemma4:31b to Vercel Production and creates a deployment using those settings. Retest synthetic extraction through editable review, confirm no automatic expense save and clean up the fixture. Keep this verification open until the corrected deployment has actually been tested; the earlier generic HTTP failure does not establish a JSON, timeout or credential defect.
+
 ## Ollama Cloud receipt adapter and hosted upload limit — Approved 2026-11-09 (D-08)
 
 - [x] Preserve default local extraction and add explicit server-only Ollama Cloud selection, private key/model validation, a fixed HTTPS endpoint, redirect rejection, bounded uncached requests, sanitized access/quota/timeout errors and strict prompted-JSON validation without unsupported cloud schema format. Retain uncertainty, explicit review, retry-safe owned saving and exact dashboard totals.
