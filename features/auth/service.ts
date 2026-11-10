@@ -14,7 +14,7 @@ export async function authenticate(input: unknown) {
   if (!await allowAuthAttempt("login", email)) return null;
   const user = await prisma.user.findUnique({ where: { email } });
   if (!await verifyPassword(user?.passwordHash, password) || !user) return null;
-  return { id: user.id, name: user.name, email: user.email };
+  return { id: user.id, name: user.name, email: user.email, sessionVersion: user.sessionVersion };
 }
 
 export async function register(input: unknown) {

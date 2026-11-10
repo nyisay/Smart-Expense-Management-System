@@ -6,6 +6,7 @@ import { Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { loginAction, registerAction } from "./actions";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -53,16 +54,9 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
             </div>
             <div className="space-y-2">
               <Label htmlFor="auth-password">Password</Label>
-              <Input
-                id="auth-password"
-                name="password"
-                type="password"
-                required
-                minLength={12}
-                maxLength={128}
+              <PasswordInput id="auth-password" name="password" required minLength={12} maxLength={128}
                 autoComplete={registering ? "new-password" : "current-password"}
-                aria-describedby="password-help"
-              />
+                aria-describedby="password-help" toggleDisabled={pending} />
             </div>
             <p id="password-help" className="text-sm text-muted-foreground">
               Use 12–128 characters.

@@ -1,5 +1,23 @@
 # Local setup and verification
 
+## Account settings and password updates (D-09)
+
+Open **Settings** (`/app`) to edit your display name, view your sign-in email/member-since date and choose Dark Base or Frosted Glass. Email, currency and reporting timezone are read-only. Reset changes restores the last saved name. A stale profile form rejects a newer change made in another tab; reload before retrying.
+
+Under **Password & security**, enter your current password, a different new password of 12–128 characters and matching confirmation. Eye controls reveal only their associated field. **Update password and sign out** invalidates every existing session and returns this device to login. Other devices are rejected on their next authenticated request; the feature does not erase already-rendered content remotely. Sign in again using the new password. Invalid current passwords and mismatches preserve the form with feedback; five password verification attempts per 15-minute window are allowed.
+
+**Migration required before running/deploying this version:** `20261110000100_account_sessions` adds User.sessionVersion with default zero. Review/back up the intended deployment database and run the existing `npm.cmd run db:migrate` using that database's private DIRECT_URL before serving the new application code. Keep DATABASE_URL pointed at the matching database. Existing users, financial records and version-zero sessions are initially preserved. No production migration is run automatically by development tests or this milestone; do not run the test suites against Neon production. No new environment variable is required.
+
+The configured application database received this migration during the 2026-11-10 login/sign-up repair. A live local browser check then verified registration, login, protected Settings and logout. Other Neon branches/databases are separate and must have their own migration applied. If login/sign-up reports unavailable after pulling this version, check migration status before resetting passwords or changing session configuration.
+
+Manual checks:
+
+- Edit a name, save and reload; check the profile card, sidebar and profile menu. Try an older form in another tab and confirm stale changes are rejected.
+- Check both appearances, mobile section links, keyboard focus, read-only fields and long account names/emails.
+- Sign in using two browser contexts. Try a mismatched confirmation and incorrect current password; neither should change credentials or end the sessions.
+- Change the password correctly. Confirm both old sessions lose access, the old password fails and the new password works. A different user's session should remain valid.
+- Confirm personal transactions, budgets and group balances remain unchanged. Passwords, cookies and hashes must stay out of screenshots/logs.
+
 ## Optional Ollama Cloud receipt extraction (D-08)
 
 Local Ollama remains the default. For hosted receipt processing, create a private key using [Ollama Cloud](https://docs.ollama.com/cloud), check your account's usage limits, and select a cloud API model supporting images. No local Ollama service/download is required in cloud mode. Model availability and receipt accuracy must be verified separately; the API model name can differ from the local CLI's `:cloud` name. Current official cloud documentation uses `gemma4:31b`, whose [model page](https://ollama.com/library/gemma4) lists image support.
@@ -86,7 +104,7 @@ npm run db:seed
 npm run dev
 ```
 
-Visit `/register` and `/login`. `/` and successful login lead to the protected `/dashboard`; anonymous visitors are redirected to login. `/app` remains the account page with sign-out and links to transactions/dashboard. The category seed is idempotent and only adds missing fixed categories; it does not reset financial data.
+Visit `/register` and `/login`. `/` and successful login lead to the protected `/dashboard`; anonymous visitors are redirected to login. `/app` provides profile, appearance and password/security settings with sign-out and dashboard navigation. The category seed is idempotent and only adds missing fixed categories; it does not reset financial data.
 
 `/app` links to `/transactions`. Transaction list, detail, create and edit routes are protected. The list supports income/expense, category and inclusive from/to date filters with 20 records per page. Amounts are exact whole MMK; enter digits without decimals or commas. Deletion requires confirmation, and stale edits/deletions require reloading the latest record.
 
@@ -274,7 +292,7 @@ Manual verification:
 
 Focused automated coverage: `node --conditions=react-server --import tsx --test tests/budgets.test.ts tests/analytics.test.ts tests/transaction-filtering.test.ts`. Existing `npm test`, `npm run test:http`, `npm run test:e2e`, `npm run lint`, `npm run typecheck` and `npm run build` cover regression checks.
 
-JWT session lifetime is eight hours; Auth.js may refresh it on session access. Logout clears the current browser cookie; it cannot revoke a previously stolen JWT immediately. Deleting a user prevents subsequent token use because JWT and protected data access check the persisted user. Password reset, email verification, invitations and role administration are absent. Receipt extraction/review, owner-managed group expenses/recorded repayments and monthly budgets are implemented; persistent receipt image storage is absent. Financial operations are Server Actions, not public REST endpoints. Fixed-window auth throttling allows five attempts per normalized email/action and 500 total attempts/action per 15-minute window across instances; production abuse policy may need tuning.
+JWT session lifetime is eight hours; Auth.js may refresh it on session access. Logout clears the current browser cookie. A successful current-password change invalidates every earlier session version on the next authenticated request (D-09). Deleting a user prevents subsequent token use because JWT and protected data access check the persisted user. Forgotten-password reset, email verification, invitations and role administration are absent. Receipt extraction/review, owner-managed group expenses/recorded repayments and monthly budgets are implemented; persistent receipt image storage is absent. Financial operations are Server Actions, not public REST endpoints. Fixed-window auth throttling allows five attempts per normalized email/action (per user ID for password changes) and 500 total attempts/action per 15-minute window across instances; production abuse policy may need tuning.
 
 ## Official implementation references
 

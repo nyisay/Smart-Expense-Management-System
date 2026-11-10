@@ -2,8 +2,8 @@ import "server-only";
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { getServerEnv } from "@/lib/env";
-import { prisma } from "@/lib/prisma";
 import { authenticate } from "@/features/auth/service";
+import { isCurrentSession } from "@/features/auth/session-version";
 
 export const { handlers, auth, signIn, signOut } = NextAuth(() => {
   const env = getServerEnv();
@@ -26,10 +26,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth(() => {
     })],
     callbacks: {
       async jwt({ token, user }) {
-        if (user) return { sub: user.id };
-        if (!token.sub) return null;
-        const exists = await prisma.user.findUnique({ where: { id: token.sub }, select: { id: true } });
-        return exists ? token : null;
+        if (user) return typeof user.sessionVersion === "number"
+          ? { sub: user.id, sessionVersion: user.sessionVersion } : null;
+        return await isCurrentSession(token.sub, token.sessionVersion) ? token : null;
       },
       async session({ session, token }) {
         if (session.user && token.sub) session.user.id = token.sub;

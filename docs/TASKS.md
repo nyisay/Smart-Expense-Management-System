@@ -1,5 +1,20 @@
 # Implementation tasks
 
+## Account settings and session security — Authorized and verified 2026-11-10 (D-09)
+
+- [x] Record explicit approval for password changes and signing out all sessions. Redesign `/app` using existing dark/frosted tokens, account initials/details/member-since date, section navigation, editable name/reset, read-only email, appearance, fixed reporting preferences, skeleton loading and logout.
+- [x] Add strict server validation and authenticated owner-only profile changes with stale-name rejection. Refresh the shell/profile and preserve form values on errors. Reuse the shared accessible PasswordInput across authentication and settings.
+- [x] Require current password, matching/different new credentials and bounded verification attempts. Atomically replace the hash and increment sessionVersion; retain the version observed during credential verification, reject revoked/invalid JWT versions and clear the current cookie. Preserve legacy zero-version sessions until password change and other users' sessions independently.
+- [x] Review the additive session-version migration and apply it only to a disposable local PostgreSQL instance. Validate/generate Prisma, pass lint/typecheck/build, all 63 unit/database tests and one HTTP lifecycle. New cases cover validation, owner isolation, stale edits, invalid/legacy versions, wrong passwords, races and throttling.
+- [x] Pass the final 26-case desktop/360px browser suite (3.2 minutes). Verify two signed-in contexts, profile persistence/reset/stale failure, both themes/axe, password rejection/recovery, all-session revocation including a replayed Server Action, old-password rejection/new-password login and existing financial/receipt/group flows. Fix the discovered profile-menu label mismatch without excluding axe rules; inspect desktop/mobile screenshots and update docs.
+- [x] Follow-up authentication repair: after the user reported broken login/sign-up, verify the configured application/direct URLs target the same database and only the reviewed session-version migration is pending. Apply it and confirm real local registration/login/protected Settings/logout using a disposable account; remove the fixture. No existing password/financial record was reset.
+- [ ] Release gate: apply `20261110000100_account_sessions` to any other intended database/branch before serving the new code, then verify the deployed settings flow after an approved release. The configured application database is migrated as of the 2026-11-10 repair; no code commit, push or deployment was performed.
+
+## Password visibility controls — Authorized and verified 2026-11-10
+
+- [x] Add an eye/eye-off control to the shared login/registration password field. Default to masked text; preserve the entered value, validation, password-manager autocomplete and authentication behavior. Use an accessible non-submit button with keyboard access, visible focus and a 44px touch target.
+- [x] Add four desktop/360px browser cases covering both forms, default masking, pointer/Tab/Space/Enter interactions, value preservation, valid-form non-submission, accessible names, touch dimensions, no horizontal overflow and axe checks. Pass lint/typecheck/build, inspect screenshots and update progress. Test public forms against an isolated server with an unreachable dummy database; do not run database suites against the configured hosted database.
+
 ## Deployed Ollama Cloud failure — Investigating 2026-11-09
 
 - [x] Reproduce the live failure with one synthetic receipt and a disposable account, verify cloud mode, confirm zero saved transactions and remove the fixture. Check public site/model availability, database category prerequisites and the five mocked adapter tests without revealing credentials.

@@ -21,6 +21,7 @@ model User {
   email        String        @unique @db.VarChar(254)
   name         String        @db.VarChar(80)
   passwordHash String
+  sessionVersion Int         @default(0)
   createdAt    DateTime      @default(now()) @db.Timestamptz(3)
   updatedAt    DateTime      @updatedAt @db.Timestamptz(3)
   transactions Transaction[]

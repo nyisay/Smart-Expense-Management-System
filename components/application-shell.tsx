@@ -70,7 +70,12 @@ export function ApplicationShell({ user, children }: {
             <span className="text-sm font-medium text-muted-foreground">Personal workspace</span>
           </div>
           <div className="flex items-center gap-4">
-            <DropdownMenu.Root><DropdownMenu.Trigger asChild><Button variant="ghost" aria-label="Open profile menu"><span className="flex size-8 items-center justify-center rounded-full bg-primary/15 text-primary" aria-hidden="true">{user.name.slice(0, 1).toUpperCase()}</span><span className="hidden max-w-32 truncate sm:block">{user.name}</span><ChevronDown aria-hidden="true" /></Button></DropdownMenu.Trigger>
+            <DropdownMenu.Root><DropdownMenu.Trigger asChild><Button variant="ghost">
+              <span className="sr-only">Open profile menu for </span>
+              <span className="flex size-8 items-center justify-center rounded-full bg-primary/15 text-primary" aria-hidden="true">{user.name.slice(0, 1).toUpperCase()}</span>
+              <span className="sr-only sm:not-sr-only sm:block sm:max-w-32 sm:truncate">{user.name}</span>
+              <ChevronDown aria-hidden="true" />
+            </Button></DropdownMenu.Trigger>
               <DropdownMenu.Portal><DropdownMenu.Content align="end" sideOffset={8} className="z-50 min-w-56 max-w-[calc(100vw-2rem)] rounded-xl border bg-popover p-2 text-popover-foreground shadow-xl"><DropdownMenu.Label className="max-w-64 break-words px-3 py-2 text-xs text-muted-foreground">{user.email}</DropdownMenu.Label><DropdownMenu.Item asChild><Link href="/app" className="block rounded-lg px-3 py-2 text-sm outline-none focus:bg-accent">Account & appearance</Link></DropdownMenu.Item></DropdownMenu.Content></DropdownMenu.Portal>
             </DropdownMenu.Root>
           </div>

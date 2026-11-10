@@ -40,10 +40,23 @@ Register with email/password, sign in, sign out, and retain a session across rel
 
 Acceptance:
 - Valid registration persists a user; duplicate normalized emails cannot create two accounts, including concurrent requests.
+- Login and registration passwords start masked. A labeled eye button toggles visibility with pointer, touch or keyboard, preserves the entered value and password-manager autocomplete, and never submits the form. Keep the existing password validation and server authentication unchanged.
 - Correct credentials sign in; wrong credentials fail without revealing whether the account exists. Expired, missing, or tampered sessions cannot access protected data or mutate it.
 - Sign-out clears the current session cookie. Tokens and password hashes never reach client props or logs.
 - User B cannot read, edit, delete, or infer user A's transactions, groups, bills, or chart data by changing IDs or invoking endpoints directly.
 - Rate limits apply to registration and login across application instances. Authentication checks include the persisted user's existence.
+
+### FR-01a Account settings (D-09)
+
+Use the existing `/app` account route for a responsive profile/settings workspace in both themes. Show an initials avatar, name, read-only sign-in email, actual member-since date, section navigation, appearance selection, fixed MMK/Asia-Yangon reporting information and current-device logout. Profile images, email changes, account deletion and new currency/timezone preferences are not part of this milestone.
+
+Acceptance:
+- Users can edit their own trimmed display name (1–80 characters), reset unsaved edits and see inline/toast feedback. Persist the change in PostgreSQL and refresh the profile card/sidebar/menu. Reject stale original-name submissions instead of overwriting a newer name; never accept a target account from the client.
+- Name changes preserve existing sessions, email, password and financial records. Only safe public profile fields enter the client UI; never expose password hashes or session secrets.
+- Password change requires a correct current password, a different 12–128 character new password and exact confirmation. Validate on the server, bound attempts, preserve entered values on error, and provide show/hide controls with accessible names. No password is logged or persisted outside the existing password-hash storage.
+- Replace the hash and increment a per-user session version atomically with a comparison against the verified credential/version. Concurrent password changes cannot both use the same old credentials successfully. Clear the current session cookie and return to login; old passwords stop working.
+- Every authenticated session read rejects old JWT versions after a password change, including direct Server Action requests from another device. Legacy unversioned JWTs work only while the stored version is zero. Newly authenticated sessions use the version observed during credential verification. Other users' sessions remain valid.
+- Provide readable mobile/desktop layouts, skeleton loading, keyboard controls, both-theme contrast and clear read-only field descriptions. Use actual account data without implying email verification or fabricating active-session counts. Email verification and MFA remain deferred.
 
 ### FR-02 Personal transactions
 

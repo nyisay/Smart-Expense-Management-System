@@ -1,5 +1,15 @@
 # Decision log
 
+## D-09 — Profile settings and password changes with session revocation
+
+Status: Accepted on 2026-11-10. The user requested a modern account-settings redesign and essential profile features. When asked about password scope, the user explicitly selected “Include password changes and sign out all sessions”. This authorizes an additive session-version field and JWT validation needed for revocation while retaining Auth.js encrypted HttpOnly JWT sessions, existing password hashing and server-derived authorization.
+
+Keep `/app` as Settings. Provide initials, owner-only editable name, read-only sign-in email, member-since date, the existing appearance selector, fixed MMK/Asia-Yangon information, password change and current-device logout. No email changes/verification, account deletion, photo storage, MFA, currency conversion or new dependency is added. A name compare-and-set detects stale profile forms; profile editing does not revoke sessions or change financial data.
+
+Add User.sessionVersion, default zero. Credentials bind the version observed during password verification into each new JWT. Every later auth/session read compares it with the persisted version; pre-migration JWTs lacking a version are compatible only with zero. Never upgrade an old token to the latest version. Password changes require the current password, matching new password/confirmation, a different 12–128 character new password and shared bounded attempts. A single conditional update replaces the Argon2id hash and increments the version, preventing concurrent old-credential changes from both succeeding. Clear the current cookie and return to login; all old/legacy sessions fail their next authenticated request. Previously rendered browser content is not remotely erased. Password hashes and entered passwords never enter session claims or logs.
+
+Apply the reviewed additive migration before serving the new application. It does not modify existing passwords or financial records and initially preserves current sessions. Verification uses a separate disposable local PostgreSQL cluster; do not run database tests/migrations against the user's hosted data or deploy/push without approval.
+
 ## D-08 — Optional Ollama Cloud receipt extraction and hosted upload limit
 
 Status: Accepted on 2026-11-09. The user selected “Ollama Cloud — hosted version of the current provider” and then instructed “perform step 6”, referring to the proposed cloud adapter and Vercel-compatible upload limit. This supersedes D-04's local-only restriction for an explicitly configured cloud mode. It does not authorize deployment, a push, a commit, image retention, or changes to financial calculations.

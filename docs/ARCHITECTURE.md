@@ -1,5 +1,15 @@
 # Architecture
 
+## Account profile and session revocation (D-09)
+
+`/app` remains the thin authenticated Settings route. `features/account/` owns strict Zod profile/password inputs, server-only persistence, Server Actions and presentation. Profile queries select only name/email/createdAt. Actions obtain the persisted principal with requireUser and construct allowed inputs; posted user IDs/emails/credential versions cannot choose another account. Display-name updates compare the original name and owner ID in one transaction to reject stale forms, then revalidate the root layout so the shell/profile reflect the new name. No financial records are modified.
+
+The additive `20261110000100_account_sessions` migration adds a nonnegative User.sessionVersion integer with default zero. Credentials return the version read with the verified password to the server-side Auth.js JWT callback. Tokens contain the user ID, session version and Auth.js lifecycle claims; session responses do not expose the version or hashes. The existing JWT strategy, encryption, HttpOnly cookie, expiry and per-operation authorization remain. The JWT callback now compares the token's version to the persisted version on every session read using features/auth/session-version.ts. Unversioned legacy tokens mean zero only; null, malformed and mismatched versions fail. Never reread the latest version to relabel a credential result or upgrade an old token.
+
+Password changes reuse Argon2id and shared AuthThrottle counters (password-change action, five per user / 500 global per 15-minute window). After current-password verification, one conditional update matches owner ID, verified hash and version, replaces the hash and increments the version. This prevents two concurrent changes or a login race from turning old credentials into a current session. Existing logout clears the current cookie and redirects to login; other devices lose access at their next authenticated request. Previously rendered client content is not remotely erased. Email changes/photo storage/account deletion remain deferred. The shared PasswordInput is reused across login, registration and three password-change fields without browser persistence.
+
+Apply this migration before serving the new code. Development verification uses a separate disposable PostgreSQL instance on loopback port 55438 rather than the configured hosted database. No production migration or deployment is implied by the implementation approval.
+
 ## Whole-group history deletion (D-07)
 
 The owner-confirmed Delete group action on `/groups` removes one complete group history: repayments, expenses (whose shares already cascade), participants and group, all inside the existing owned-group row lock/transaction. Server authentication, strict Zod input and owner predicates are mandatory. Existing Group.updatedAt serves as the confirmation revision; successful group mutations advance it monotonically using the database clock. A stale list/dialog is rejected instead of silently removing changed history. Group deletion revalidates the list/nested routes and returns success feedback. Personal transactions are never touched; no schema, migration or dependency is added.
@@ -33,11 +43,12 @@ Routes render UI; feature modules own behavior. Server-only PrismaPg uses DATABA
 ```text
 app/                        # public auth pages, protected shell, Auth.js handlers
 features/auth/              # Zod schemas, service, password hashing, throttles, actions, form
+features/account/           # owned profile edits, current-password changes, settings presentation
 features/transactions/      # schemas, owner-scoped store, session wrappers, actions, forms
 features/dashboard/         # filters, PostgreSQL aggregation, exact summaries, Recharts views
 features/receipts/          # image validation, local/cloud Ollama, suggestions, explicit review/save
 features/groups/            # exact allocations, owned group ledger, balances, forms/actions
-components/ui/              # official shadcn/ui primitives
+components/ui/              # shadcn/ui primitives and small shared controls
 lib/                        # server env, Prisma singleton, exact money, ownership queries
 prisma/                     # schema, migrations, fixed category seed
 tests/                      # unit/PostgreSQL checks; http/ for real Auth.js lifecycle
@@ -53,7 +64,7 @@ shadcn/ui is initialized with the official CLI's Radix/nova preset and Tailwind 
 | `/` | Redirect to `/dashboard`; successful login also lands there |
 | `/register` | Public registration form; generic duplicate outcome |
 | `/login` | Public email/password sign-in |
-| `/app` | Protected account-ready placeholder and POST sign-out form |
+| `/app` | Protected profile, appearance, password/security settings and POST sign-out |
 | `/dashboard` | Protected financial overview, shared date/category filters, charts and recent records |
 | `/transactions` | Owner-scoped list, URL filters, 20-row pagination |
 | `/transactions/new` | Income/expense creation with retry key |
@@ -131,7 +142,7 @@ Registration and Credentials authorize use Zod; emails are trimmed/lowercased, n
 
 Fixed 15-minute windows allow five attempts per email/action and 500 total per action across processes, stored as atomic PostgreSQL counters with HMAC keys. Expired counters are cleaned opportunistically. These limits protect the minimal foundation; tune deployment abuse policy deliberately.
 
-Auth.js issues encrypted JWTs in HttpOnly, SameSite=Lax, Path=/ cookies; Secure and the __Secure- prefix apply on HTTPS. Production requires HTTPS AUTH_URL. JWT session lifetime is eight hours and can refresh on session access. Tokens contain only the user ID plus Auth.js lifecycle claims; password hashes never enter tokens or client results. Logout uses POST and clears the current cookie; stolen-token immediate revocation is absent. Each JWT refresh and protected query checks the persisted user; deleted users lose access.
+Auth.js issues encrypted JWTs in HttpOnly, SameSite=Lax, Path=/ cookies; Secure and the __Secure- prefix apply on HTTPS. Production requires HTTPS AUTH_URL. JWT session lifetime is eight hours and can refresh on session access. Tokens contain the user ID, session version and Auth.js lifecycle claims; password hashes never enter tokens or client results. Logout uses POST and clears the current cookie. A successful password change increments the persisted version and revokes all previous sessions on their next authenticated request (D-09); there is no individual-device session inventory. Each JWT refresh and protected query checks the persisted user; deleted users lose access.
 
 requireUser() reads auth(), verifies the user in PostgreSQL, and returns a safe projection. Every public data helper/action derives ownerId there and scopes queries by both record ID and owner (or the owning Group). Category data is fixed/read-only. Transaction writes use owner/version predicates; future group/settlement writes must enforce equivalent checks. Knowing an ID is never authorization.
 
