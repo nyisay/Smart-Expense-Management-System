@@ -2,7 +2,7 @@
 
 ## Account settings and password updates (D-09)
 
-Open **Settings** (`/app`) to edit your display name, view your sign-in email/member-since date and choose Dark Base or Frosted Glass. Email, currency and reporting timezone are read-only. Reset changes restores the last saved name. A stale profile form rejects a newer change made in another tab; reload before retrying.
+Open **Settings** (`/app`) to edit your display name and view your sign-in email/member-since date. Frosted Glass is the only appearance; there is no appearance selector. Email, currency and reporting timezone are read-only. Reset changes restores the last saved name. A stale profile form rejects a newer change made in another tab; reload before retrying.
 
 Under **Password & security**, enter your current password, a different new password of 12–128 characters and matching confirmation. Eye controls reveal only their associated field. **Update password and sign out** invalidates every existing session and returns this device to login. Other devices are rejected on their next authenticated request; the feature does not erase already-rendered content remotely. Sign in again using the new password. Invalid current passwords and mismatches preserve the form with feedback; five password verification attempts per 15-minute window are allowed.
 
@@ -13,7 +13,7 @@ The configured application database received this migration during the 2026-11-1
 Manual checks:
 
 - Edit a name, save and reload; check the profile card, sidebar and profile menu. Try an older form in another tab and confirm stale changes are rejected.
-- Check both appearances, mobile section links, keyboard focus, read-only fields and long account names/emails.
+- Check Frosted Glass, mobile section links, keyboard focus, read-only fields and long account names/emails.
 - Sign in using two browser contexts. Try a mismatched confirmation and incorrect current password; neither should change credentials or end the sessions.
 - Change the password correctly. Confirm both old sessions lose access, the old password fails and the new password works. A different user's session should remain valid.
 - Confirm personal transactions, budgets and group balances remain unchanged. Passwords, cookies and hashes must stay out of screenshots/logs.
@@ -57,20 +57,20 @@ If another tab changes the group while confirmation is open, deletion is rejecte
 - Register valid details: expect generic registration feedback without confirmation that a particular email exists. Sign in correctly: expect a success toast after the dashboard opens.
 - Submit wrong sign-in details twice: each attempt should show a fresh generic error notice; no successful-login notification should appear. Inline feedback remains available after dismissal.
 - Correct transaction/group/budget/receipt form errors and submit again. On mobile, notices appear above forms rather than covering Save buttons. Receipt extraction success says review is required; it never means an expense was automatically saved.
-- Use Dismiss or F8 keyboard navigation. Check both themes and forced colors; notifications contain no passwords, session data or extracted receipt fields. Notifications are temporary UI state, not persisted authentication.
+- Use Dismiss or F8 keyboard navigation. Check Frosted Glass and forced colors; notifications contain no passwords, session data or extracted receipt fields. Notifications are temporary UI state, not persisted authentication.
 
-## Appearance and navigation (D-06)
+## Appearance and navigation (D-10)
 
-Dark Base is the default. Choose **Frosted Glass** using Appearance in the desktop sidebar, mobile navigation drawer or account Settings (`/app`). Login/sign-up and the top navbar do not display an Appearance selector. The browser retains only this appearance choice between visits, including on authentication pages. If storage is disabled, controls still work for the current visit.
+**Frosted Glass is the only appearance** on every page, including login/sign-up. Dark Base and all Appearance buttons/selectors are removed. The server renders the frosted state before client JavaScript runs; old saved choices are ignored, and disabled browser storage does not affect appearance. The background photograph is unchanged. Reduced transparency, no-blur, forced-color and print fallbacks remain available automatically for accessibility.
 
 Desktop navigation has a collapse/expand control; icon links expose names/tooltips. On tablet/mobile, use **Open navigation**, select a destination or press Escape to close. Analytics navigates to the existing dashboard chart section; Settings uses the existing account page. No standalone empty Analytics/Settings routes were added.
 
 Manual presentation checks:
 
-- [ ] Choose each theme, reload and confirm preference retention without a noticeable light flash. Try with browser storage denied and confirm usable defaults.
+- [ ] Reload public/protected pages and confirm Frosted Glass from first paint with no Appearance selector. Try an old saved dark preference and denied browser storage; the page should remain frosted.
 - [ ] Navigate Dashboard, Transactions, Receipt Scanner, Groups & Splitting, Analytics, Budgets and Settings. Collapse/expand on desktop; verify mobile drawer focus containment, Escape and focus return.
 - [ ] Use keyboard Tab and the skip link; inspect visible focus, collapsed tooltips, profile menu and logout. Check mobile landscape/tablet and long names/amounts.
-- [ ] Compare exact chart tooltips/tables and budget/group labels in both themes. Confirm date/category filters, input drafts, receipt review and settlements retain their behavior.
+- [ ] Compare exact chart tooltips/tables and budget/group labels in Frosted Glass. Confirm date/category filters, input drafts, receipt review and settlements retain their behavior.
 - [ ] Check reduced motion/transparency, a browser without backdrop-filter and forced colors. Complete manual screen-reader, physical-device and Firefox/WebKit checks before release; Chromium/axe coverage is not WCAG certification.
 
 ## Prerequisites and environment
@@ -104,7 +104,7 @@ npm run db:seed
 npm run dev
 ```
 
-Visit `/register` and `/login`. `/` and successful login lead to the protected `/dashboard`; anonymous visitors are redirected to login. `/app` provides profile, appearance and password/security settings with sign-out and dashboard navigation. The category seed is idempotent and only adds missing fixed categories; it does not reset financial data.
+Visit `/register` and `/login`. `/` and successful login lead to the protected `/dashboard`; anonymous visitors are redirected to login. `/app` provides profile, reporting preferences and password/security settings with sign-out and dashboard navigation. The category seed is idempotent and only adds missing fixed categories; it does not reset financial data.
 
 `/app` links to `/transactions`. Transaction list, detail, create and edit routes are protected. The list supports income/expense, category and inclusive from/to date filters with 20 records per page. Amounts are exact whole MMK; enter digits without decimals or commas. Deletion requires confirmation, and stale edits/deletions require reloading the latest record.
 

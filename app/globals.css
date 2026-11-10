@@ -48,11 +48,11 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-:root, .dark {
+:root {
   color-scheme: dark;
   --background: #090b11;
   --foreground: #f5f6fa;
-  --card: #141821;
+  --card: #191f30;
   --card-foreground: var(--foreground);
   --popover: #191e29;
   --popover-foreground: var(--foreground);
@@ -85,26 +85,17 @@
   --sidebar-accent-foreground: #ededff;
   --sidebar-border: #292f3d;
   --sidebar-ring: var(--ring);
-  --glass-border: rgb(255 255 255 / 10%);
-  --glass-shadow: 0 4px 16px rgb(0 0 0 / 8%);
-  --field: #10141e;
-  --panel-blur: 0px;
-  --ambient-blue: transparent;
-  --ambient-teal: transparent;
-  --ambient-violet: transparent;
-}
-
-html[data-theme="frosted"] {
-  --card: #191f30;
   --glass-border: rgb(192 199 235 / 16%);
   --glass-shadow: 0 12px 30px -16px rgb(0 0 0 / 50%), inset 0 1px 0 rgb(255 255 255 / 4%);
+  --field: #10141e;
+  --panel-blur: 0px;
   --ambient-blue: rgb(44 62 111 / 22%);
   --ambient-teal: rgb(30 70 78 / 12%);
   --ambient-violet: rgb(72 52 111 / 16%);
 }
 
 @supports (backdrop-filter: blur(16px)) or (-webkit-backdrop-filter: blur(16px)) {
-  html[data-theme="frosted"] { --card: rgb(25 31 48 / 45%); --panel-blur: 16px; }
+  :root { --card: rgb(25 31 48 / 45%); --panel-blur: 16px; }
 }
 
 @layer components {
@@ -158,13 +149,13 @@ html[data-theme="frosted"] {
 }
 
 @media (prefers-reduced-transparency: reduce) {
-  :root, .dark, html[data-theme="frosted"] { --card: #141821; --field: #10141e; }
+  :root { --card: #141821; --field: #10141e; }
   .glass-panel { -webkit-backdrop-filter: none; backdrop-filter: none; }
   body::before { display: none; }
 }
 
 @media (forced-colors: active) {
-  :root, .dark, html[data-theme="frosted"] {
+  :root {
     color-scheme: light dark;
     --background: Canvas;
     --foreground: CanvasText;
@@ -202,7 +193,7 @@ html[data-theme="frosted"] {
 }
 
 @media print {
-  :root, .dark, html[data-theme="frosted"] { --card: #ffffff; --foreground: #000000; --muted-foreground: #333333; }
+  :root { --card: #ffffff; --foreground: #000000; --muted-foreground: #333333; }
   body { background: white; color: black; }
   body::before { display: none; }
   .glass-panel { box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }

@@ -131,19 +131,6 @@ async function registerAndLogin(
   await page.getByRole("button", { name: "Dismiss notification", exact: true }).click();
 }
 
-async function setDarkTheme(page: Page, enabled: boolean) {
-  await page.evaluate(async (dark) => {
-    document.documentElement.dataset.theme = dark ? "frosted" : "dark";
-    window.dispatchEvent(new Event("expense-theme"));
-    await new Promise(requestAnimationFrame);
-    await Promise.all(
-      document.getAnimations()
-        .filter((animation) => animation instanceof CSSTransition)
-        .map((animation) => animation.finished.catch(() => {})),
-    );
-  }, enabled);
-}
-
 test("toast notifications cover native validation, repeated authentication errors and registration", async ({ page, account }, testInfo) => {
   await page.goto("/register");
   await page.getByRole("button", { name: "Register", exact: true }).click();
@@ -185,9 +172,9 @@ async function workspaceNavigate(page: Page, name: string) {
   await page.getByRole("link", { name, exact: true }).filter({ visible: true }).click();
 }
 
-test("workspace navigation, themes, collapse and mobile drawer preserve existing pages", async ({ page, account }, testInfo) => {
+test("workspace navigation, Frosted Glass, collapse and mobile drawer preserve existing pages", async ({ page, account }, testInfo) => {
   await registerAndLogin(page, account);
-  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "frosted");
   const mobile = testInfo.project.name.includes("mobile");
   if (!mobile) {
     await page.getByRole("button", { name: "Collapse sidebar", exact: true }).click();
@@ -211,11 +198,11 @@ test("workspace navigation, themes, collapse and mobile drawer preserve existing
   if (mobile) await page.keyboard.press("Escape");
   await workspaceNavigate(page, "Settings");
   await expect(page.getByRole("heading", { name: "Account settings" })).toBeVisible();
-  await page.getByRole("main").getByLabel("Appearance", { exact: true }).selectOption("frosted");
+  await expect(page.getByLabel("Appearance", { exact: true })).toHaveCount(0);
   await expect(page.locator("html")).toHaveAttribute("data-theme", "frosted");
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "frosted");
-  await expect(page.getByRole("main").getByLabel("Appearance", { exact: true })).toHaveValue("frosted");
+  await expect(page.getByLabel("Appearance", { exact: true })).toHaveCount(0);
   await accessibleAndFits(page);
   await workspaceNavigate(page, "Analytics");
   await expect(page).toHaveURL(/\/dashboard#analytics$/);
@@ -226,15 +213,15 @@ test("workspace navigation, themes, collapse and mobile drawer preserve existing
   await page.goto("/transactions/new");
   await page.getByLabel("Amount (MMK)", { exact: true }).fill("12345");
   await page.getByRole("button", { name: "Open profile menu" }).click();
-  await expect(page.getByRole("menuitem", { name: "Account & appearance" })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "Account settings", exact: true })).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.getByLabel("Amount (MMK)", { exact: true })).toHaveValue("12345");
   await accessibleAndFits(page);
   await page.screenshot({ path: testInfo.outputPath("workspace-frosted.png"), fullPage: true });
   await workspaceNavigate(page, "Settings");
-  await page.getByRole("main").getByLabel("Appearance", { exact: true }).selectOption("dark");
+  await page.evaluate(() => localStorage.setItem("smart-expense-theme", "dark"));
   await page.reload();
-  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "frosted");
   if (mobile) {
     for (const viewport of [{ width: 768, height: 1024 }, { width: 800, height: 360 }]) {
       await page.setViewportSize(viewport);
@@ -257,29 +244,14 @@ async function accessibleAndFits(page: Page) {
         () => document.documentElement.scrollWidth <= window.innerWidth,
       ),
     ).toBe(true);
-    const wasDark = await page.evaluate(() =>
-      document.documentElement.dataset.theme === "frosted",
-    );
-    try {
-      for (const dark of [false, true]) {
-        await setDarkTheme(page, dark);
-        const result = await new AxeBuilder({ page })
-          .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
-          .analyze();
-        expect(
-          result.violations.map((violation) => ({
-            theme: dark ? "frosted" : "dark",
-            id: violation.id,
-            targets: violation.nodes.map((node) => ({
-              target: node.target,
-              summary: node.failureSummary,
-            })),
-          })),
-        ).toEqual([]);
-      }
-    } finally {
-      await setDarkTheme(page, wasDark);
-    }
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "frosted");
+    const result = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+      .analyze();
+    expect(result.violations.map((violation) => ({
+      id: violation.id,
+      targets: violation.nodes.map((node) => ({ target: node.target, summary: node.failureSummary })),
+    }))).toEqual([]);
   });
 }
 
@@ -419,9 +391,6 @@ test("registration, secure session, expenses, chart interaction, edit/delete and
     path: testInfo.outputPath("dashboard.png"),
     fullPage: true,
   });
-  await setDarkTheme(page, true);
-  await page.screenshot({ path: testInfo.outputPath("dashboard-dark.png"), fullPage: true });
-  await setDarkTheme(page, false);
   await donut.click({ position: point });
   await expect(
     page.getByRole("button", { name: "Food", exact: true }),

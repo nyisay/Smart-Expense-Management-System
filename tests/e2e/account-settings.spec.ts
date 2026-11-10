@@ -58,16 +58,14 @@ test("account profile, preferences and password changes preserve ownership and r
     await otherPage.reload();
     await expect(otherPage.getByLabel("Display name", { exact: true })).toHaveValue("Updated profile");
 
-    for (const theme of ["dark", "frosted"]) {
-      await page.getByRole("main").getByLabel("Appearance", { exact: true }).selectOption(theme);
-      await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
-      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-      const results = await new AxeBuilder({ page }).analyze();
-      expect(results.violations).toEqual([]);
-      await page.screenshot({ path: testInfo.outputPath(`account-${theme}.png`), fullPage: true });
-    }
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "frosted");
+    await expect(page.getByLabel("Appearance", { exact: true })).toHaveCount(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    const results = await new AxeBuilder({ page }).analyze();
+    expect(results.violations).toEqual([]);
+    await page.screenshot({ path: testInfo.outputPath("account-frosted.png"), fullPage: true });
     await page.reload();
-    await expect(page.getByRole("main").getByLabel("Appearance", { exact: true })).toHaveValue("frosted");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "frosted");
     await expect(page.getByLabel("Display name", { exact: true })).toHaveValue("Updated profile");
 
     await page.getByLabel("Current password", { exact: true }).fill("Incorrect-current-password");

@@ -1,5 +1,11 @@
 # Decision log
 
+## D-10 — Frosted Glass as the sole application appearance
+
+Status: Accepted on 2026-11-10. The user explicitly requested “frosted glass default and remove the dark base” and removal of the Appearance control. This supersedes D-06's selectable Dark Base/Frosted scheme and the appearance selector in D-09; account editing/security and all other scope remain unchanged.
+
+Render Frosted Glass from the server on every page, fold its tokens into the default CSS and remove the theme selector/component, localStorage preference bootstrap and obsolete appearance menu wording. Ignore previously saved appearance choices rather than restoring Dark Base. Keep the `.dark` Tailwind marker only for existing dark-surface component variants, not as a second theme. Retain the supplied global photograph, 45% frosted panels/16px blur where supported, readable controls/charts and opaque reduced-transparency/no-blur/forced-color/print fallbacks. No new dependency, database change or deployment is authorized by this presentation request.
+
 ## D-09 — Profile settings and password changes with session revocation
 
 Status: Accepted on 2026-11-10. The user requested a modern account-settings redesign and essential profile features. When asked about password scope, the user explicitly selected “Include password changes and sign out all sessions”. This authorizes an additive session-version field and JWT validation needed for revocation while retaining Auth.js encrypted HttpOnly JWT sessions, existing password hashing and server-derived authorization.

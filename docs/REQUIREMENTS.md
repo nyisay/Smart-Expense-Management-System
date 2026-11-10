@@ -6,7 +6,7 @@ Status: the implemented MVP has local integration, isolated desktop/mobile Playw
 
 Make personal spending easy to understand through clear, accurate visualizations. Support manual bookkeeping, receipt-assisted expense entry, and unequal group bills in one small application. Persist financial records in PostgreSQL through Prisma; use Auth.js JWT sessions for email/password authentication.
 
-Presentation: the user subsequently requested a premium Dark Base/Frosted Glass workspace on 2026-11-08 (D-06), superseding the earlier light-default glass theme. Provide persisted appearance selection, a collapsible desktop sidebar and focus-managed mobile drawer, active links, profile/logout controls and no dead routes. Analytics and Settings reuse existing dashboard/account views. Preserve chart readability, exact data, responsive layouts, keyboard access and contrast; support reduced transparency/motion, no-blur fallbacks and forced colors. [UI_THEME.md](UI_THEME.md) records the design and verification approach.
+Presentation: Frosted Glass is the sole application appearance under D-10, superseding D-06's selectable Dark Base/Frosted design. Render it from the server on every page, ignore legacy saved theme choices and expose no Appearance selector. Preserve the supplied global photograph, collapsible desktop sidebar, focus-managed mobile drawer, active links, profile/logout controls and existing routes. Analytics and Settings reuse dashboard/account views. Preserve chart readability, exact data, responsive layouts, keyboard access and contrast; support reduced transparency/motion, no-blur fallbacks and forced colors. [UI_THEME.md](UI_THEME.md) records the design and verification approach.
 
 Confirmed currency/reporting rules: MMK, whole kyat (0 decimal places), Asia/Yangon. Owner-managed groups use named participants, one payer per group expense and exact owed shares; group records remain separate from personal transactions. Receipt review saves only confirmed transaction fields. Recorded settlements represent money repaid outside the application.
 
@@ -41,6 +41,7 @@ Register with email/password, sign in, sign out, and retain a session across rel
 Acceptance:
 - Valid registration persists a user; duplicate normalized emails cannot create two accounts, including concurrent requests.
 - Login and registration passwords start masked. A labeled eye button toggles visibility with pointer, touch or keyboard, preserves the entered value and password-manager autocomplete, and never submits the form. Keep the existing password validation and server authentication unchanged.
+- Login/sign-up use an equal 50/50 desktop split: the user-supplied static illustration in a non-interactive left panel and the functional form on the right. Remove the enclosing background card and its inset padding; the two panels meet without a gap. Cover the image panel completely without stretching; centered cropping is expected when image and panel proportions differ. Use the single Frosted Glass appearance and retain the global photograph. Hide the decorative image panel on smaller screens and retain readable labeled fields, password controls, feedback and existing navigation links.
 - Correct credentials sign in; wrong credentials fail without revealing whether the account exists. Expired, missing, or tampered sessions cannot access protected data or mutate it.
 - Sign-out clears the current session cookie. Tokens and password hashes never reach client props or logs.
 - User B cannot read, edit, delete, or infer user A's transactions, groups, bills, or chart data by changing IDs or invoking endpoints directly.
@@ -48,7 +49,7 @@ Acceptance:
 
 ### FR-01a Account settings (D-09)
 
-Use the existing `/app` account route for a responsive profile/settings workspace in both themes. Show an initials avatar, name, read-only sign-in email, actual member-since date, section navigation, appearance selection, fixed MMK/Asia-Yangon reporting information and current-device logout. Profile images, email changes, account deletion and new currency/timezone preferences are not part of this milestone.
+Use the existing `/app` account route for a responsive Frosted Glass profile/settings workspace. Show an initials avatar, name, read-only sign-in email, actual member-since date, section navigation, fixed MMK/Asia-Yangon reporting information and current-device logout. The appearance selector is removed under D-10. Profile images, email changes, account deletion and new currency/timezone preferences are not part of this milestone.
 
 Acceptance:
 - Users can edit their own trimmed display name (1–80 characters), reset unsaved edits and see inline/toast feedback. Persist the change in PostgreSQL and refresh the profile card/sidebar/menu. Reject stale original-name submissions instead of overwriting a newer name; never accept a target account from the client.
@@ -56,7 +57,7 @@ Acceptance:
 - Password change requires a correct current password, a different 12–128 character new password and exact confirmation. Validate on the server, bound attempts, preserve entered values on error, and provide show/hide controls with accessible names. No password is logged or persisted outside the existing password-hash storage.
 - Replace the hash and increment a per-user session version atomically with a comparison against the verified credential/version. Concurrent password changes cannot both use the same old credentials successfully. Clear the current session cookie and return to login; old passwords stop working.
 - Every authenticated session read rejects old JWT versions after a password change, including direct Server Action requests from another device. Legacy unversioned JWTs work only while the stored version is zero. Newly authenticated sessions use the version observed during credential verification. Other users' sessions remain valid.
-- Provide readable mobile/desktop layouts, skeleton loading, keyboard controls, both-theme contrast and clear read-only field descriptions. Use actual account data without implying email verification or fabricating active-session counts. Email verification and MFA remain deferred.
+- Provide readable mobile/desktop layouts, skeleton loading, keyboard controls, Frosted Glass contrast and clear read-only field descriptions. Use actual account data without implying email verification or fabricating active-session counts. Email verification and MFA remain deferred.
 
 ### FR-02 Personal transactions
 

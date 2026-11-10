@@ -1,5 +1,52 @@
 # Implementation tasks
 
+## Dark market photograph on auth pages — Completed 2026-11-10
+
+- [x] Replace the pastel artwork with the supplied market photograph using an optimized WebP and a distinct asset URL. Preserve 972×655.2 desktop sizing, equal panels, image cover, mobile layout, forms and background. Pass lint/typecheck/build and six focused browser checks; inspect desktop rendering and update theme/handoff. Leave the source download untouched; no deployment.
+
+## Auth size reduced by 10% and 9% — Completed 2026-11-10
+
+- [x] Reduce the current 1080×720 desktop baseline to 972×655.2 pixels. Preserve equal panels and mobile sizing; reduce only desktop section gaps so registration fits without clipping. Verify both form dimensions, layout/accessibility and image loading in six browser cases. Pass lint/typecheck/build, inspect the sign-up screenshot and update theme/progress. No deployment.
+
+## Slightly smaller auth layout — Completed 2026-11-10
+
+- [x] Reduce desktop maximum width from 1152px to 1080px and minimum height from 760px to 720px. Keep equal panels, cover sizing, mobile layout and forms unchanged. Pass lint/typecheck/build and six focused browser checks; inspect the desktop screenshot and update theme/handoff notes. No deployment.
+
+## Financial artwork on auth pages — Completed 2026-11-10
+
+- [x] Replace the cherry image with the user's supplied financial-chart PNG, using an optimized local WebP and a new filename to avoid old-image cache reuse. Preserve equal panels, full-panel cover, mobile layout, Frosted theme and forms. Pass lint/typecheck/build and six focused browser cases; inspect the desktop image. Original download untouched; no deployment.
+
+## Equal auth panels without outer card — Completed 2026-11-10
+
+- [x] Remove the enclosing auth Card/padding, use equal adjacent desktop columns and keep rounded exterior corners. Preserve image cover sizing, Frosted form styling, mobile layout and all form behavior. Verify equal widths/no gap/no outer Card in existing layout tests; pass lint/typecheck/build and six desktop/mobile browser cases, inspect screenshots and update current requirements/theme docs. No deployment.
+
+## Auth image covers panel — Completed 2026-11-10
+
+- [x] Switch the shared login/sign-up illustration to object-cover so it fills its panel without stretching, accepting centered cropping. Preserve mobile visibility, forms, theme and background; update the layout assertion and current image requirements. Pass lint/typecheck/build and six focused responsive/accessibility browser cases; inspect the desktop screenshot. No deployment.
+
+## Cherry illustration replacement — Completed 2026-11-10
+
+- [x] Replace the login/sign-up geometric illustration with the supplied cherry.jpg, remove the superseded copied asset and preserve image containment, responsive visibility, forms, Frosted Glass and global background. Pass lint/typecheck/build and six focused desktop/mobile layout/accessibility browser tests; inspect the desktop result. Original downloads remain untouched; no deployment.
+
+## Supplied login/sign-up illustration — Completed 2026-11-10
+
+- [x] Copy the supplied static WebP into public/auth and replace the reserved desktop photo placeholder in the shared AuthForm. Show the full image without cropping or distortion, mark it decorative and keep mobile/tablet forms compact. Preserve Frosted Glass, the global photograph, password controls and authentication behavior.
+- [x] Verify image loading/containment and responsive placement through existing browser tests; pass lint/typecheck/build and all 10 focused desktop/360px layout/password cases. Inspect desktop login/mobile sign-up screenshots and update requirements/theme/handoff docs. Leave the source download unchanged; no dependency, database, commit, push or deployment change.
+
+## Frosted Glass only — Authorized and verified 2026-11-10 (D-10)
+
+- [x] Make Frosted Glass the server-rendered and CSS default. Remove Dark Base selection, the theme-switcher component, sidebar/mobile drawer and Settings appearance controls, and browser-storage bootstrap. Ignore old saved theme choices. Preserve the photograph, readable shared tokens, dark utility variants and reduced-transparency/forced-color/print/no-blur fallbacks.
+- [x] Update account copy/navigation and theme documentation. Add browser assertions for initial SSR appearance, legacy dark preferences and unavailable browser storage; retain existing authentication, financial, receipt, budget and group regressions. Pass lint/typecheck/build, one HTTP lifecycle and all 32 desktop/360px Chromium cases; inspect responsive screenshots. Test only against disposable local PostgreSQL; no schema, business logic, dependency, hosted-data, commit, push or deployment change.
+
+## Undo authentication GIF — Completed 2026-11-10
+
+- [x] Remove the copied GIF/poster and playback component, restore the inert reserved photo panel and original layout assertions, preserve the existing redesign/themes/background and pass lint/typecheck/build. Leave the original download untouched; no deployment or database change.
+
+## Reference-based login/sign-up layout — Authorized and verified 2026-11-10
+
+- [x] Adapt the supplied reference into a responsive split-panel layout using the existing shared AuthForm/shadcn controls. Reserve an inert left photo area without copying reference artwork; keep the existing themes/background image, validation, password eye controls, pending/inline/toast feedback and working navigation. Collapse to the form on smaller screens.
+- [x] Add desktop/mobile, both-theme layout/accessibility/photo-slot tests. Pass lint/typecheck/build, one HTTP lifecycle and 12 focused browser cases (1.1 minutes), including password visibility, native validation, repeated auth failures, successful registration/login and the existing authenticated expense/chart flow. Inspect desktop Frosted login/mobile Dark sign-up screenshots; update requirements/theme/progress documentation. No schema, dependency, server-authentication, production data, commit, push or deployment change.
+
 ## Account settings and session security — Authorized and verified 2026-11-10 (D-09)
 
 - [x] Record explicit approval for password changes and signing out all sessions. Redesign `/app` using existing dark/frosted tokens, account initials/details/member-since date, section navigation, editable name/reset, read-only email, appearance, fixed reporting preferences, skeleton loading and logout.

@@ -1,15 +1,14 @@
 import Link from "next/link";
-import { CalendarDays, Check, CircleUserRound, Globe2, LockKeyhole, LogOut, Palette, ShieldCheck, Wallet } from "lucide-react";
+import { CalendarDays, Check, CircleUserRound, Globe2, LockKeyhole, LogOut, ShieldCheck, Wallet } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ThemeSwitcher } from "@/components/theme-switcher";
 import { logoutAction } from "@/features/auth/actions";
 import { REPORTING_TIMEZONE } from "@/lib/money";
 import { ProfileForm, PasswordForm } from "./forms";
 
 const sections = [
   { id: "profile", label: "Profile", Icon: CircleUserRound },
-  { id: "appearance", label: "Appearance", Icon: Palette },
+  { id: "preferences", label: "Preferences", Icon: Wallet },
   { id: "security", label: "Security", Icon: ShieldCheck },
 ];
 
@@ -20,7 +19,7 @@ export function AccountView({ profile }: { profile: { name: string; email: strin
     <header className="space-y-2">
       <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Your workspace</p>
       <h1 className="text-3xl font-semibold tracking-tight">Account settings</h1>
-      <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">Make it yours. Manage your profile, appearance and account security.</p>
+      <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">Manage your profile, reporting preferences and account security.</p>
     </header>
     <div className="grid items-start gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
       <aside className="space-y-5" aria-label="Your account overview">
@@ -57,14 +56,13 @@ export function AccountView({ profile }: { profile: { name: string; email: strin
           </CardHeader>
           <CardContent className="pt-6"><ProfileForm name={profile.name} email={profile.email} /></CardContent>
         </Card></section>
-        <section id="appearance" aria-labelledby="appearance-heading" className="scroll-mt-24"><Card>
+        <section id="preferences" aria-labelledby="preferences-heading" className="scroll-mt-24"><Card>
           <CardHeader>
-            <div className="flex items-center gap-3"><Palette className="size-5 text-primary" aria-hidden="true" /><h2 id="appearance-heading" className="text-lg font-semibold">Workspace preferences</h2></div>
-            <p className="text-sm text-muted-foreground">Choose a look that feels comfortable to work in.</p>
+            <div className="flex items-center gap-3"><Wallet className="size-5 text-primary" aria-hidden="true" /><h2 id="preferences-heading" className="text-lg font-semibold">Workspace preferences</h2></div>
+            <p className="text-sm text-muted-foreground">Consistent reporting settings across your workspace.</p>
           </CardHeader>
           <CardContent className="space-y-5">
-            <div className="max-w-sm"><ThemeSwitcher /></div>
-            <div className="grid gap-3 border-t border-border pt-5 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-2">
               <div className="flex items-center gap-3 rounded-xl border border-border bg-muted/20 p-4">
                 <Wallet className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" /><div><p className="text-xs text-muted-foreground">Currency</p><p className="text-sm font-medium">MMK (Ks) · Whole kyat</p></div>
               </div>
@@ -72,7 +70,7 @@ export function AccountView({ profile }: { profile: { name: string; email: strin
                 <Globe2 className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" /><div><p className="text-xs text-muted-foreground">Reporting timezone</p><p className="text-sm font-medium">Asia/Yangon · UTC+06:30</p></div>
               </div>
             </div>
-            <p className="text-xs text-muted-foreground">Appearance is saved in this browser. Currency and reporting timezone are fixed for this workspace.</p>
+            <p className="text-xs text-muted-foreground">Currency and reporting timezone are fixed for this workspace.</p>
           </CardContent>
         </Card></section>
         <section id="security" aria-labelledby="security-heading" className="scroll-mt-24"><Card>

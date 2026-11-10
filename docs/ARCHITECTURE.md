@@ -22,7 +22,7 @@ Toast follow-up: the root layout mounts a single client `Toaster` inside Suspens
 
 The protected layout retains its server-side `requireUser()` and Suspense boundary, then passes minimal profile fields and server-rendered page children to `components/application-shell.tsx`. The client shell owns only navigation collapse/drawer/profile interaction. Every existing data query/action still authorizes separately. No private data is moved into shared caching or browser storage.
 
-`app/globals.css` owns Dark Base/Frosted Glass tokens and responsive shell spacing. `components/theme-switcher.tsx` synchronizes appearance controls; a fixed bootstrap in the root layout applies the validated local preference before body paint. Storage contains only `smart-expense-theme`; unavailable storage falls back safely. The existing `/app` route hosts account/appearance settings and `/dashboard#analytics` hosts analytics. Business routes and database/API boundaries are unchanged.
+`app/globals.css` owns the single Frosted Glass token set and responsive shell spacing (D-10). The root server layout emits data-theme=frosted; the frosted tokens are the CSS defaults, so no preference bootstrap, client theme component or browser storage is needed. Old smart-expense-theme values are ignored. The `.dark` class remains only to support existing dark-surface utility variants. Opaque no-blur/reduced-transparency, forced-color and print fallbacks remain. `/app` hosts profile/reporting/security settings and `/dashboard#analytics` hosts analytics. Business routes and database/API boundaries are unchanged.
 
 ## D-05 extension — Monthly planning and analytics
 
@@ -64,7 +64,7 @@ shadcn/ui is initialized with the official CLI's Radix/nova preset and Tailwind 
 | `/` | Redirect to `/dashboard`; successful login also lands there |
 | `/register` | Public registration form; generic duplicate outcome |
 | `/login` | Public email/password sign-in |
-| `/app` | Protected profile, appearance, password/security settings and POST sign-out |
+| `/app` | Protected profile, reporting preferences, password/security settings and POST sign-out |
 | `/dashboard` | Protected financial overview, shared date/category filters, charts and recent records |
 | `/transactions` | Owner-scoped list, URL filters, 20-row pagination |
 | `/transactions/new` | Income/expense creation with retry key |

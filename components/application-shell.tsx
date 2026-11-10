@@ -6,7 +6,6 @@ import { useState } from "react";
 import { Dialog, Tooltip, DropdownMenu } from "radix-ui";
 import { LayoutDashboard, ArrowLeftRight, ScanLine, Users, ChartNoAxesCombined, Target, Settings, LogOut, PanelLeftClose, PanelLeftOpen, Menu, X, WalletCards, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ThemeSwitcher } from "./theme-switcher";
 import { logoutAction } from "@/features/auth/actions";
 
 const navigation = [
@@ -44,7 +43,6 @@ export function ApplicationShell({ user, children }: {
       </nav>
       <div className="mt-auto space-y-4 border-t border-sidebar-border pt-4">
         <Link href="/app" title={compact ? "Settings" : undefined} aria-label="Settings" aria-current={pathname === "/app" ? "page" : undefined} onClick={() => setOpen(false)} className="sidebar-link flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:outline-ring"><Settings className="size-[18px] shrink-0" aria-hidden="true" />{!compact && "Settings"}</Link>
-        {!compact && <ThemeSwitcher />}
         {!compact && <Link href="/app" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-lg p-2 hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:outline-ring"><span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-sm font-semibold text-primary" aria-hidden="true">{user.name.slice(0, 1).toUpperCase()}</span><span className="min-w-0"><span className="block truncate text-sm font-medium">{user.name}</span><span className="block truncate text-xs text-muted-foreground">Your personal workspace</span></span></Link>}
         <form action={logoutAction}><Button variant="ghost" className="w-full justify-start" aria-label="Log out" title={compact ? "Log out" : undefined}><LogOut aria-hidden="true" />{!compact && "Log out"}</Button></form>
       </div>
@@ -76,7 +74,7 @@ export function ApplicationShell({ user, children }: {
               <span className="sr-only sm:not-sr-only sm:block sm:max-w-32 sm:truncate">{user.name}</span>
               <ChevronDown aria-hidden="true" />
             </Button></DropdownMenu.Trigger>
-              <DropdownMenu.Portal><DropdownMenu.Content align="end" sideOffset={8} className="z-50 min-w-56 max-w-[calc(100vw-2rem)] rounded-xl border bg-popover p-2 text-popover-foreground shadow-xl"><DropdownMenu.Label className="max-w-64 break-words px-3 py-2 text-xs text-muted-foreground">{user.email}</DropdownMenu.Label><DropdownMenu.Item asChild><Link href="/app" className="block rounded-lg px-3 py-2 text-sm outline-none focus:bg-accent">Account & appearance</Link></DropdownMenu.Item></DropdownMenu.Content></DropdownMenu.Portal>
+              <DropdownMenu.Portal><DropdownMenu.Content align="end" sideOffset={8} className="z-50 min-w-56 max-w-[calc(100vw-2rem)] rounded-xl border bg-popover p-2 text-popover-foreground shadow-xl"><DropdownMenu.Label className="max-w-64 break-words px-3 py-2 text-xs text-muted-foreground">{user.email}</DropdownMenu.Label><DropdownMenu.Item asChild><Link href="/app" className="block rounded-lg px-3 py-2 text-sm outline-none focus:bg-accent">Account settings</Link></DropdownMenu.Item></DropdownMenu.Content></DropdownMenu.Portal>
             </DropdownMenu.Root>
           </div>
         </header>
