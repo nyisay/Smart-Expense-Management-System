@@ -9,10 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useFeedbackToast, toastInvalidInput } from "@/components/use-feedback-toast";
-import {
-  NativeSelect,
-  NativeSelectOption,
-} from "@/components/ui/native-select";
+import { FormSelect } from "@/components/ui/form-select";
 import { createTransactionAction, editTransactionAction } from "./actions";
 import type { CategoryOption, TransactionView } from "./schemas";
 import { transactionDetailHref } from "./navigation";
@@ -75,23 +72,20 @@ export function TransactionForm({
         <div className="grid gap-5 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="type">Type</Label>
-            <NativeSelect
+            <FormSelect
               id="type"
               name="type"
               className="w-full"
               value={values.type}
-              onChange={(event) =>
+              onValueChange={(value) =>
                 setValues({
                   ...values,
-                  type: event.target.value === "INCOME" ? "INCOME" : "EXPENSE",
+                  type: value === "INCOME" ? "INCOME" : "EXPENSE",
                   categoryId: "",
                 })
               }
               {...validation("type")}
-            >
-              <NativeSelectOption value="EXPENSE">Expense</NativeSelectOption>
-              <NativeSelectOption value="INCOME">Income</NativeSelectOption>
-            </NativeSelect>
+             options={[{value:"EXPENSE",label:"Expense"},{value:"INCOME",label:"Income"}]} />
             {error("type")}
           </div>
           <div className="space-y-2">
@@ -115,26 +109,15 @@ export function TransactionForm({
           </div>
           <div className="space-y-2">
             <Label htmlFor="categoryId">Category</Label>
-            <NativeSelect
+            <FormSelect
               id="categoryId"
               name="categoryId"
               className="w-full"
               value={values.categoryId}
               required
-              onChange={(event) => change("categoryId", event.target.value)}
+              onValueChange={(value) => change("categoryId", value)}
               {...validation("categoryId")}
-            >
-              <NativeSelectOption value="">
-                Choose a category
-              </NativeSelectOption>
-              {categories
-                .filter((category) => category.type === values.type)
-                .map((category) => (
-                  <NativeSelectOption key={category.id} value={category.id}>
-                    {category.name}
-                  </NativeSelectOption>
-                ))}
-            </NativeSelect>
+             options={[{value:"",label:"Choose a category"},...categories.filter(category=>category.type===values.type).map(category=>({value:category.id,label:category.name}))]} />
             {error("categoryId")}
           </div>
           <div className="space-y-2">

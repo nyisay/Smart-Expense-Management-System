@@ -1,6 +1,11 @@
 import { z } from "zod";
 import { registrationSchema } from "@/features/auth/schemas";
 
+export const profilePhotoSchema = z.strictObject({
+  expectedPhotoId: z.preprocess((value) => value === "" ? null : value, z.uuid().nullable()),
+});
+export const profilePhotoFileSchema = z.file().min(1).max(2_000_000).mime(["image/jpeg", "image/png", "image/webp"]);
+
 export const profileSchema = z.strictObject({
   name: registrationSchema.shape.name,
   expectedName: z.string().min(1).max(80),

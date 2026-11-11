@@ -1,5 +1,21 @@
 # Local setup and verification
 
+## Dialog and dropdown motion
+
+Open a logout/delete confirmation, the profile menu, a Select field or a date picker. Panels should fade/move in briefly and fade out when closed; mobile navigation also slides slightly. Check No/Escape returns keyboard focus, selection still updates forms and repeated openings leave no overlay behind. Enable your operating system's reduced-motion preference to show these controls immediately without the added motion. No package, database or environment setup is required for these animations.
+
+## Monthly expense line chart
+
+Dashboard and Analytics now default **Monthly expense trend** to **Line chart**. Choose **Bar chart** from **Trend view** to use the previous presentation. Select Last six months or a custom multi-month range to see a connected trend; a one-month selection correctly shows one point. Hover a point or use the chart's arrow-key navigation for exact MMK tooltips, and open **View exact monthly amounts** for the table. Date/category filters affect the same persisted personal expenses in both views; missing months are zero and group records remain separate. No new setup, dependency or migration is needed for this chart change.
+
+## Profile photo migration and checks (D-14)
+
+Before running this version against your intended database, review/back up that database, keep DATABASE_URL and DIRECT_URL on the same database/branch, and run `npm.cmd run db:generate` then `npm.cmd run db:migrate`. The additive `20261112000100_profile_photo` migration is required by profile/navigation reads. It was applied only to disposable local PostgreSQL for verification; this task has not migrated the configured Neon/production database. No new key or storage service is needed. Never run automated tests against production.
+
+In Settings → Personal profile, select a static JPG, PNG or WebP up to 2 MB and click **Upload photo**. The server crops a centered square, respects orientation and strips metadata. Check Settings, the profile menu and sidebar, then reload. Replace it or choose **Remove photo** to restore initials. Stale forms in another tab must require a reload. Invalid, animated, corrupt or over-12-megapixel files must show an error. Signed-out `/api/account/photo` requests return 401; owners without a photo receive 404. Photos are private to the owner's workspace.
+
+Dropdowns now use shadcn Select, including calendar months. Click or press Enter/Space to open, use arrow keys/typeahead, and Escape to return focus. Empty “All” filters and required selections retain their existing meanings. Back-to-dashboard links include a decorative arrow.
+
 ## Receipt drag and drop
 
 Open Receipt Scanner and drag one JPG, PNG or WebP onto the outlined upload area, or use the labeled file picker with pointer/keyboard. The area highlights while dragging. Check the preview, then choose **Extract receipt**; dropping a file alone sends nothing. Multiple files, empty files, unsupported types and images above 4,000,000 bytes show an error. Choose a valid replacement to clear it. Drops during extraction are ignored. Review/correct the suggestion and explicitly confirm before saving. This upload interaction does not resolve missing Vercel/Ollama Cloud configuration; the production receipt investigation remains separate.

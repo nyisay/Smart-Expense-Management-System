@@ -7,7 +7,11 @@ import {
   getDefaultClassNames,
   type DayButton,
   type Locale,
+  type DropdownProps,
+  useDayPicker,
 } from "react-day-picker"
+import { setMonth } from "date-fns"
+import { FormSelect } from "./form-select"
 
 import { Button, buttonVariants } from "@/components/ui/button"
 import { ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon } from "lucide-react"
@@ -51,17 +55,17 @@ function Calendar({
         ),
         month: cn("flex w-full flex-col gap-4", defaultClassNames.month),
         nav: cn(
-          "absolute inset-x-0 top-0 flex w-full items-center justify-between gap-1",
+          "pointer-events-none absolute inset-x-0 top-0 flex w-full items-center justify-between gap-1",
           defaultClassNames.nav
         ),
         button_previous: cn(
           buttonVariants({ variant: buttonVariant }),
-          "size-(--cell-size) p-0 select-none aria-disabled:opacity-50",
+          "pointer-events-auto size-(--cell-size) p-0 select-none aria-disabled:opacity-50",
           defaultClassNames.button_previous
         ),
         button_next: cn(
           buttonVariants({ variant: buttonVariant }),
-          "size-(--cell-size) p-0 select-none aria-disabled:opacity-50",
+          "pointer-events-auto size-(--cell-size) p-0 select-none aria-disabled:opacity-50",
           defaultClassNames.button_next
         ),
         month_caption: cn(
@@ -134,6 +138,7 @@ function Calendar({
         ...classNames,
       }}
       components={{
+        MonthsDropdown: CalendarMonthDropdown,
         Root: ({ className, rootRef, ...props }) => {
           return (
             <div
@@ -178,6 +183,13 @@ function Calendar({
       {...props}
     />
   )
+}
+
+function CalendarMonthDropdown({ options = [], value, disabled, "aria-label": label }: DropdownProps) {
+  const { goToMonth, months } = useDayPicker();
+  return <FormSelect aria-label={label ?? "Choose the Month"} value={String(value ?? "")} disabled={disabled}
+    className="min-w-28" options={options.map((option) => ({ ...option, value: String(option.value) }))}
+    onValueChange={(next) => { if (months[0]) goToMonth(setMonth(months[0].date, Number(next))); }} />;
 }
 
 function CalendarDayButton({

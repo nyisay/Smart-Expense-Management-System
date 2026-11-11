@@ -4,7 +4,7 @@ import { ApplicationShell } from "@/components/application-shell";
 
 async function ProtectedContent({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
-  return <ApplicationShell user={{ name: user.name, email: user.email }}>{children}</ApplicationShell>;
+  return <ApplicationShell user={{ name: user.name, email: user.email, profilePhotoId: user.profilePhotoId }}>{children}</ApplicationShell>;
 }
 
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {

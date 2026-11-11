@@ -35,9 +35,10 @@ export function DatePicker({ id, label, value, defaultValue = "", onValueChange,
   const [open, setOpen] = useState(false);
   const [month, setMonth] = useState<Date>();
   const input = useRef<HTMLInputElement>(null);
-  const selected = open ? parseCalendarInput(current, precision) : undefined;
-  const first = open ? parseCalendarInput(min, precision) : undefined;
-  const last = open ? parseCalendarInput(max, precision) : undefined;
+  // Retain the opened calendar during Radix's exit animation without constructing it during prerender.
+  const selected = month ? parseCalendarInput(current, precision) : undefined;
+  const first = month ? parseCalendarInput(min, precision) : undefined;
+  const last = month ? parseCalendarInput(max, precision) : undefined;
   const view = month ?? selected ?? first;
   const invalid = !!current && (!calendarDateSchema.safeParse(precision === "month" ? `${current}-01` : current).success || current < min || current > max);
 
@@ -76,7 +77,7 @@ export function DatePicker({ id, label, value, defaultValue = "", onValueChange,
         onKeyDown={(event) => { if (event.altKey && event.key === "ArrowDown") { event.preventDefault(); toggle(true); } }} />
       <PopoverTrigger asChild><Button type="button" variant="ghost" size="icon" disabled={disabled || !hydrated} aria-label={`Choose ${label}`} className="absolute right-0 top-0"><CalendarIcon aria-hidden="true" /></Button></PopoverTrigger>
     </div></PopoverAnchor>
-    {open && first && last && view && <PopoverContent align="start" collisionPadding={16} aria-label={`${label} picker`} style={{ animation: "none" }} className="w-[min(320px,calc(100vw-2rem))] max-h-[min(calc(100dvh-2rem),var(--radix-popover-content-available-height))] overflow-y-auto border border-border p-2 [&_button]:transition-none">
+    {first && last && view && <PopoverContent align="start" collisionPadding={16} aria-label={`${label} picker`} className="w-[min(320px,calc(100vw-2rem))] max-h-[min(calc(100dvh-2rem),var(--radix-popover-content-available-height))] overflow-y-auto border border-border p-2 [&_button]:transition-none">
       <div className="flex items-center justify-between gap-3 px-2">
         <Label htmlFor={`${id}-year`}>Year</Label>
         <Input id={`${id}-year`} key={view.getFullYear()} type="number" min={first.getFullYear()} max={last.getFullYear()} defaultValue={view.getFullYear()} className="w-28"

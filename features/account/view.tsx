@@ -1,10 +1,12 @@
-import Link from "next/link";
+import { BackToDashboard } from "@/components/back-to-dashboard";
 import { CalendarDays, Check, CircleUserRound, Globe2, LockKeyhole, LogOut, ShieldCheck, Wallet } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { LogoutConfirmation } from "@/features/auth/logout-confirmation";
 import { REPORTING_TIMEZONE } from "@/lib/money";
 import { ProfileForm, PasswordForm } from "./forms";
+import { ProfilePhotoForm } from "./photo-form";
+import { UserAvatar } from "@/components/user-avatar";
 
 const sections = [
   { id: "profile", label: "Profile", Icon: CircleUserRound },
@@ -12,8 +14,7 @@ const sections = [
   { id: "security", label: "Security", Icon: ShieldCheck },
 ];
 
-export function AccountView({ profile }: { profile: { name: string; email: string; createdAt: Date } }) {
-  const initials = profile.name.trim().split(/\s+/).slice(0, 2).map((part) => Array.from(part)[0]).join("").toUpperCase();
+export function AccountView({ profile }: { profile: { name: string; email: string; createdAt: Date; profilePhotoId: string | null } }) {
   const joined = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: REPORTING_TIMEZONE }).format(profile.createdAt);
   return <main className="mx-auto w-full max-w-6xl space-y-8 px-4 py-8 sm:px-6 sm:py-12">
     <header className="space-y-2">
@@ -26,7 +27,7 @@ export function AccountView({ profile }: { profile: { name: string; email: strin
         <Card className="overflow-hidden">
           <div className="h-2 bg-primary/40" />
           <CardContent className="space-y-5 pt-6">
-            <div className="flex size-16 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-xl font-semibold text-primary" aria-hidden="true">{initials}</div>
+            <UserAvatar name={profile.name} photoId={profile.profilePhotoId} className="size-16 rounded-2xl border border-primary/20 text-xl" />
             <div className="min-w-0 space-y-1">
               <h2 className="break-words text-lg font-semibold">{profile.name}</h2>
               <p className="break-all text-sm text-muted-foreground">{profile.email}</p>
@@ -45,7 +46,7 @@ export function AccountView({ profile }: { profile: { name: string; email: strin
               <Icon className="size-4" aria-hidden="true" />{label}
             </a>)}
           </nav>
-          <Button asChild variant="outline" className="w-full"><Link href="/dashboard">Back to dashboard</Link></Button>
+          <Button asChild variant="outline" className="w-full"><BackToDashboard /></Button>
         </CardContent></Card>
       </aside>
       <div className="min-w-0 space-y-6">
@@ -54,7 +55,7 @@ export function AccountView({ profile }: { profile: { name: string; email: strin
             <div className="flex items-center gap-3"><CircleUserRound className="size-5 text-primary" aria-hidden="true" /><h2 id="profile-heading" className="text-lg font-semibold">Personal profile</h2></div>
             <p className="text-sm text-muted-foreground">Keep your workspace identity up to date.</p>
           </CardHeader>
-          <CardContent className="pt-6"><ProfileForm name={profile.name} email={profile.email} /></CardContent>
+          <CardContent className="pt-6"><ProfilePhotoForm photoId={profile.profilePhotoId} /><ProfileForm name={profile.name} email={profile.email} /></CardContent>
         </Card></section>
         <section id="preferences" aria-labelledby="preferences-heading" className="scroll-mt-24"><Card>
           <CardHeader>

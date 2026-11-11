@@ -10,10 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useFeedbackToast, toastInvalidInput } from "@/components/use-feedback-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Label } from "@/components/ui/label";
-import {
-  NativeSelect,
-  NativeSelectOption,
-} from "@/components/ui/native-select";
+import { FormSelect } from "@/components/ui/form-select";
 import {
   AlertDialog,
   AlertDialogTrigger,
@@ -281,48 +278,34 @@ export function ExpenseForm({
           </div>
           <div className="space-y-2">
             <Label htmlFor="bill-payer">Who paid?</Label>
-            <NativeSelect
+            <FormSelect
               id="bill-payer"
               name="payerMemberId"
               required
               className="w-full"
               value={values.payerMemberId}
-              onChange={(e) =>
-                setValues({ ...values, payerMemberId: e.target.value })
+              onValueChange={(value) =>
+                setValues({ ...values, payerMemberId: value })
               }
               aria-invalid={!!state.errors?.payerMemberId}
-            >
-              <NativeSelectOption value="">Choose payer</NativeSelectOption>
-              {group.members.map((member) => (
-                <NativeSelectOption key={member.id} value={member.id}>
-                  {member.name}
-                </NativeSelectOption>
-              ))}
-            </NativeSelect>
+             options={[{value:"",label:"Choose payer"},...group.members.map(member=>({value:member.id,label:member.name}))]} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="bill-mode">Allocate shares by</Label>
-            <NativeSelect
+            <FormSelect
               id="bill-mode"
               name="mode"
               className="w-full"
               value={values.mode}
-              onChange={(e) => {
-                setValues({ ...values, mode: e.target.value });
+              onValueChange={(value) => {
+                setValues({ ...values, mode: value });
                 setShares(
                   Object.fromEntries(
                     group.members.map((member) => [member.id, "0"]),
                   ),
                 );
               }}
-            >
-              <NativeSelectOption value="AMOUNT">
-                Exact amounts (MMK)
-              </NativeSelectOption>
-              <NativeSelectOption value="PERCENT">
-                Percentages
-              </NativeSelectOption>
-            </NativeSelect>
+             options={[{value:"AMOUNT",label:"Exact amounts (MMK)"},{value:"PERCENT",label:"Percentages"}]} />
           </div>
         </div>
         <div className="space-y-3">
@@ -450,24 +433,15 @@ export function SettlementForm({
               <Label htmlFor={`settlement-${field}`}>
                 {field === "fromMemberId" ? "Who repaid?" : "Who received it?"}
               </Label>
-              <NativeSelect
+              <FormSelect
                 className="w-full"
                 id={`settlement-${field}`}
                 name={field}
                 required
                 value={values[field]}
-                onChange={(e) => change(field, e.target.value)}
+                onValueChange={(value) => change(field, value)}
                 aria-invalid={!!state.errors?.[field]}
-              >
-                <NativeSelectOption value="">
-                  Choose participant
-                </NativeSelectOption>
-                {group.members.map((member) => (
-                  <NativeSelectOption key={member.id} value={member.id}>
-                    {member.name}
-                  </NativeSelectOption>
-                ))}
-              </NativeSelect>
+               options={[{value:"",label:"Choose participant"},...group.members.map(member=>({value:member.id,label:member.name}))]} />
             </div>
           ))}
         </div>

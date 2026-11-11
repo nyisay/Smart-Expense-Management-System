@@ -14,6 +14,11 @@ Defer bank connections, exchange rates, recurring entries, exports, payment exec
 
 ## Functional requirements and acceptance criteria
 
+### Dialog and dropdown motion
+
+- Use short opacity/transform entrance and exit animations for confirmation dialogs, profile menus, shadcn Select and calendar popovers. Fade modal backdrops and give mobile navigation a restrained slide. Preserve current layout, layers, focus containment/return, keyboard selection and form behavior.
+- Respect prefers-reduced-motion by disabling this motion completely. Let Radix manage presence and focus; do not use timers/animation completion to gate authentication, navigation or mutations. Keep exits finite, avoid animating layout/blur and support repeated opening/closing without stuck overlays.
+
 ### Shared input validation
 
 - Validate untrusted form fields, route/query inputs, receipt images/provider output and server configuration with Zod at the relevant server boundary. Reuse feature schemas; native browser constraints improve feedback but cannot replace server validation or ownership checks.
@@ -21,6 +26,8 @@ Defer bank connections, exchange rates, recurring entries, exports, payment exec
 - Validate DATABASE_URL before creating the Prisma adapter using the same PostgreSQL URL schema as server configuration. Configuration errors identify only variable names, never their values. Preserve exact bigint financial parsing and existing field-error/draft behavior.
 
 ### Shared date and month selection
+
+- Use shadcn Select for visible dropdowns throughout transactions, reporting/Analytics, receipt review, group bills/repayments and the calendar month caption. Preserve existing values, filtering, disabled states, optional empty values, required constraints, resets and server validation. Keyboard opening, typeahead, Escape/focus return and viewport-bounded lists are required. Back-to-dashboard links include a decorative ArrowLeft without changing their destination.
 
 - Use a shared shadcn Calendar/Popover input for transaction creation/editing, transaction and dashboard date filters, receipt review, group bills and repayments. Budget month selection uses the same popover with a month grid and year control. Do not rely on browser-native date/month popups.
 - Preserve existing field names and exact YYYY-MM-DD / YYYY-MM form values, server Zod validation, required fields, optional empty filters, controlled drafts, disabled fieldsets and reporting rules. ISO typing remains an accessible alternative to calendar selection.
@@ -68,11 +75,12 @@ Acceptance:
 
 ### FR-01a Account settings (D-09)
 
-Use the existing `/app` account route for a responsive Frosted Glass profile/settings workspace. Show an initials avatar, name, read-only sign-in email, actual member-since date, section navigation, fixed MMK/Asia-Yangon reporting information and current-device logout. The appearance selector is removed under D-10. Profile images, email changes, account deletion and new currency/timezone preferences are not part of this milestone.
+Use the existing `/app` account route for a responsive Frosted Glass profile/settings workspace. Show an initials avatar or the owner's uploaded thumbnail (D-14), name, read-only sign-in email, actual member-since date, section navigation, fixed MMK/Asia-Yangon reporting information and current-device logout. The appearance selector is removed under D-10. Email changes, account deletion and new currency/timezone preferences remain deferred.
 
 Acceptance:
 - Users can edit their own trimmed display name (1–80 characters), reset unsaved edits and see inline/toast feedback. Persist the change in PostgreSQL and refresh the profile card/sidebar/menu. Reject stale original-name submissions instead of overwriting a newer name; never accept a target account from the client.
 - Name changes preserve existing sessions, email, password and financial records. Only safe public profile fields enter the client UI; never expose password hashes or session secrets.
+- Users can upload, replace or remove their own static JPG/PNG/WebP profile photo up to 2,000,000 bytes. Server validation rejects corrupt, animated, spoofed and over-12-megapixel images, strips metadata and stores only a centered 256×256 WebP thumbnail up to 65,536 bytes. Compare expected revisions to reject stale writes. Profile/sidebar/menu show the photo with initials fallback. Serve bytes only to the authenticated owner with private/no-store headers; never put them in session tokens, client profile props or logs. Removal clears bytes and revision without changing financial records or credentials.
 - Password change requires a correct current password, a different 12–128 character new password and exact confirmation. Validate on the server, bound attempts, preserve entered values on error, and provide show/hide controls with accessible names. No password is logged or persisted outside the existing password-hash storage.
 - Replace the hash and increment a per-user session version atomically with a comparison against the verified credential/version. Concurrent password changes cannot both use the same old credentials successfully. Clear the current session cookie and return to login; old passwords stop working.
 - Every authenticated session read rejects old JWT versions after a password change, including direct Server Action requests from another device. Legacy unversioned JWTs work only while the stored version is zero. Newly authenticated sessions use the version observed during credential verification. Other users' sessions remain valid.
@@ -98,6 +106,7 @@ Acceptance:
 - A fixture containing income MMK 100,000 and expenses Food 30,000 + Travel 20,000 yields income 100,000, expense 50,000, and net 50,000; category and monthly totals both reconcile to 50,000.
 - Include transactions on both selected boundary dates and exclude records outside the range. Monthly trends fill missing months with zero; default dates use Asia/Yangon and business dates do not shift with database timezone.
 - Changing the range recomputes all summaries from the same authorized dataset; income never appears in the expense pie.
+- Monthly expense trends default to an interactive line view on Dashboard and Analytics, with a shadcn Line/Bar selector retaining the previous bar view. Both modes use identical authenticated monthly totals/date/category filters, zero-filled months, exact MMK tooltips and the existing table. Show an empty state without records and an honest single point for a one-month range. Keep linear segments, theme tokens, responsive sizing and keyboard tooltip access; do not invent intermediate data or change financial calculations.
 - Loading, empty, error, and populated states work. An empty pie shows an explanatory empty state rather than misleading slices.
 - Provide currency/date labels, legends, readable tooltips, and an accessible textual/table equivalent. Information is not conveyed by color alone.
 - Cards, controls, and charts work at 360px and desktop widths without horizontal page overflow. Exact totals remain available even if chart coordinates use approximate numbers.

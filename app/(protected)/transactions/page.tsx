@@ -1,3 +1,4 @@
+import { BackToDashboard } from "@/components/back-to-dashboard";
 import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import Link from "next/link";
 import { Plus, ArrowDownLeft, ArrowUpRight, ReceiptText } from "lucide-react";
@@ -54,12 +55,7 @@ export default async function TransactionsPage({
   );
   return (
     <main className="mx-auto w-full max-w-6xl space-y-7 px-4 py-8 sm:px-8 sm:py-12">
-      <Link
-        href="/dashboard"
-        className="text-sm text-muted-foreground underline underline-offset-4"
-      >
-        Back to dashboard
-      </Link>
+      <BackToDashboard />
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="mb-2 text-xs font-medium uppercase tracking-widest text-muted-foreground">

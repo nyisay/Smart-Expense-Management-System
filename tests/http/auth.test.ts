@@ -737,7 +737,7 @@ test(
       const billPath = `${groupPath}/expenses/new`;
       const billPage = await (await request(billPath)).text();
       assert.ok(billPage.includes("Exact amounts (MMK)"));
-      assert.ok(billPage.includes("Percentages"));
+      assert.ok(billPage.includes("Allocate shares by"));
       const billFields = {
         title: "HTTP group dinner",
         amount: "100",

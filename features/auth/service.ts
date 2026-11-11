@@ -12,7 +12,7 @@ export async function authenticate(input: unknown) {
   if (!parsed.success) return null;
   const { email, password } = parsed.data;
   if (!await allowAuthAttempt("login", email)) return null;
-  const user = await prisma.user.findUnique({ where: { email } });
+  const user = await prisma.user.findUnique({ where: { email }, select: { id: true, name: true, email: true, passwordHash: true, sessionVersion: true } });
   if (!await verifyPassword(user?.passwordHash, password) || !user) return null;
   return { id: user.id, name: user.name, email: user.email, sessionVersion: user.sessionVersion };
 }

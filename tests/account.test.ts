@@ -42,7 +42,7 @@ test("profile and password schemas bound input without trimming passwords or acc
 
 test("owned profiles expose only public fields, persist names, preserve credentials and reject stale edits", async () => {
   const [owner, other] = await Promise.all([account(), account("Other name")]);
-  assert.deepEqual(Object.keys(await loadProfile(owner.id)).sort(), ["createdAt", "email", "name"]);
+  assert.deepEqual(Object.keys(await loadProfile(owner.id)).sort(), ["createdAt", "email", "name", "profilePhotoId"]);
   for (const id of [null, "bad-id", randomUUID()]) {
     await assert.rejects(loadProfile(id));
     await assert.rejects(updateProfile(id, { name: "New", expectedName: owner.name }));

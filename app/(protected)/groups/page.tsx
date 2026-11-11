@@ -1,3 +1,4 @@
+import { BackToDashboard } from "@/components/back-to-dashboard";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,9 +14,7 @@ export default async function GroupsPage({ searchParams }: {
   const query = await searchParams;
   return (
     <main className="mx-auto w-full max-w-5xl space-y-6 px-4 py-8 sm:px-6">
-      <Link href="/dashboard" className="text-sm underline underline-offset-4">
-        Back to dashboard
-      </Link>
+      <BackToDashboard />
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">

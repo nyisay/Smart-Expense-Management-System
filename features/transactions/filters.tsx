@@ -6,10 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
-import {
-  NativeSelect,
-  NativeSelectOption,
-} from "@/components/ui/native-select";
+import { FormSelect } from "@/components/ui/form-select";
 import type { CategoryOption, TransactionFilters } from "./schemas";
 
 export function TransactionFiltersForm({
@@ -30,39 +27,26 @@ export function TransactionFiltersForm({
     >
       <div className="space-y-2">
         <Label htmlFor="filter-type">Type</Label>
-        <NativeSelect
+        <FormSelect
           id="filter-type"
           name="type"
           className="w-full"
           value={type}
-          onChange={(event) => {
-            setType(event.target.value);
+          onValueChange={(value) => {
+            setType(value);
             setCategoryId("");
           }}
-        >
-          <NativeSelectOption value="">All types</NativeSelectOption>
-          <NativeSelectOption value="INCOME">Income</NativeSelectOption>
-          <NativeSelectOption value="EXPENSE">Expense</NativeSelectOption>
-        </NativeSelect>
+         options={[{value:"",label:"All types"},{value:"INCOME",label:"Income"},{value:"EXPENSE",label:"Expense"}]} />
       </div>
       <div className="space-y-2">
         <Label htmlFor="filter-category">Category</Label>
-        <NativeSelect
+        <FormSelect
           id="filter-category"
           name="categoryId"
           className="w-full"
           value={categoryId}
-          onChange={(event) => setCategoryId(event.target.value)}
-        >
-          <NativeSelectOption value="">All categories</NativeSelectOption>
-          {categories
-            .filter((category) => !type || category.type === type)
-            .map((category) => (
-              <NativeSelectOption key={category.id} value={category.id}>
-                {category.name}
-              </NativeSelectOption>
-            ))}
-        </NativeSelect>
+          onValueChange={(value) => setCategoryId(value)}
+         options={[{value:"",label:"All categories"},...categories.filter(category=>!type||category.type===type).map(category=>({value:category.id,label:category.name}))]} />
       </div>
       <div className="space-y-2">
         <Label htmlFor="filter-from">From</Label>

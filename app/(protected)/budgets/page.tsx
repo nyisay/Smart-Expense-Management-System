@@ -1,3 +1,4 @@
+import { BackToDashboard } from "@/components/back-to-dashboard";
 import Link from "next/link";
 import { requireUser } from "@/features/auth/session";
 import { todayInReportingTimezone } from "@/lib/dates";
@@ -16,7 +17,7 @@ export default async function BudgetsPage({ searchParams }: { searchParams: Prom
   if (!parsed.success) return <main className="mx-auto max-w-3xl space-y-4 p-6"><h1 className="text-3xl font-semibold">Invalid budget month</h1><p role="alert">Choose a valid calendar month.</p><Link href="/budgets" className="underline">Reset month</Link></main>;
   const data = await loadBudgets(user.id, parsed.data);
   return <main className="mx-auto w-full max-w-6xl space-y-6 px-4 py-8 sm:px-8">
-    <Link href="/dashboard" className="text-sm underline">Back to dashboard</Link>
+    <BackToDashboard />
     <h1 className="text-3xl font-semibold tracking-tight">Monthly category budgets</h1>
     <p className="text-sm text-muted-foreground">Full calendar month · MMK · Asia/Yangon. No rollover or prorating. Unset limits stay unbudgeted. Group expenses are excluded.</p>
     <form action="/budgets" className="flex flex-wrap items-end gap-3">

@@ -3,13 +3,14 @@ import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, Table
 
 import { Disclosure } from '@/components/ui/disclosure';
 
-import { useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   Bar,
-  BarChart,
+  ComposedChart,
   CartesianGrid,
   Cell,
+  Line,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -25,6 +26,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { FormSelect } from "@/components/ui/form-select";
+import { Label } from "@/components/ui/label";
 import { formatAmount } from "@/lib/money";
 import { reportingHref, formatMonth, type ReportingPath } from "./filters";
 import { expensePercentage } from "./aggregate";
@@ -52,6 +55,8 @@ type ChartData = Pick<
 export function DashboardCharts({ data, path = "/dashboard" }: { data: ChartData; path?: ReportingPath }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [trendView, setTrendView] = useState<"line" | "bar">("line");
+  const trendId = useId();
   const color = (id: string) =>
     COLORS[
       Math.max(
@@ -248,11 +253,16 @@ export function DashboardCharts({ data, path = "/dashboard" }: { data: ChartData
             </CardDescription>
           </CardHeader>
           <CardContent>
+            <div className="mb-4 flex flex-wrap items-center gap-3">
+              <Label htmlFor={trendId}>Trend view</Label>
+              <FormSelect id={trendId} value={trendView} onValueChange={(value) => setTrendView(value === "bar" ? "bar" : "line")}
+                options={[{ value: "line", label: "Line chart" }, { value: "bar", label: "Bar chart" }]} />
+            </div>
             {data.expense !== "0" ? (
               <div
                 className="h-80 w-full min-w-0"
                 role="group"
-                aria-label="Monthly expense bar chart"
+                aria-label={`Monthly expense ${trendView} chart`}
               >
                 <ResponsiveContainer
                   width="100%"
@@ -260,7 +270,7 @@ export function DashboardCharts({ data, path = "/dashboard" }: { data: ChartData
                   minWidth={0}
                   initialDimension={{ width: 480, height: 320 }}
                 >
-                  <BarChart
+                  <ComposedChart
                     data={monthData}
                     accessibilityLayer
                     margin={{ top: 15, right: 10, left: 0, bottom: 5 }}
@@ -286,7 +296,7 @@ export function DashboardCharts({ data, path = "/dashboard" }: { data: ChartData
                       tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
                     />
                     <Tooltip
-                      cursor={{ fill: "var(--muted)", opacity: 0.5 }}
+                      cursor={trendView === "line" ? { stroke: "var(--muted-foreground)", strokeDasharray: "3 3" } : { fill: "var(--muted)", opacity: 0.5 }}
                       content={({ active, label }) => {
                         const month = data.months.find(
                           (item) => item.month === label,
@@ -306,15 +316,24 @@ export function DashboardCharts({ data, path = "/dashboard" }: { data: ChartData
                         ) : null;
                       }}
                     />
-                    <Bar
+                    {trendView === "line" ? <Line
+                      type="linear"
+                      dataKey="value"
+                      name="Expenses"
+                      stroke="var(--chart-1)"
+                      strokeWidth={2.5}
+                      dot={{ r: 3, fill: "var(--chart-1)" }}
+                      activeDot={{ r: 6 }}
+                      isAnimationActive={false}
+                    /> : <Bar
                       dataKey="value"
                       name="Expenses"
                       fill="var(--chart-1)"
                       radius={[5, 5, 0, 0]}
                       maxBarSize={56}
                       isAnimationActive={false}
-                    />
-                  </BarChart>
+                    />}
+                  </ComposedChart>
                 </ResponsiveContainer>
               </div>
             ) : (

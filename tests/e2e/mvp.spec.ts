@@ -1,4 +1,4 @@
-import { test as base, expect, type Page, type Request } from "@playwright/test";
+import { test as base, expect, type Page, type Request, type Locator } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { randomUUID } from "node:crypto";
 import sharp from "sharp";
@@ -20,6 +20,138 @@ const test = base.extend<{ account: { email: string; password: string } }>({
   },
 });
 
+test("dialogs and dropdowns animate without delaying focus, selection or reduced-motion controls", async ({ page, account }, testInfo) => {
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.addInitScript(() => {
+    document.addEventListener("animationstart", (event) => {
+      if (event instanceof AnimationEvent && event.animationName.startsWith("expense-")) {
+        document.documentElement.dataset.layerMotion = `${document.documentElement.dataset.layerMotion ?? ""}|${event.animationName}`;
+      }
+    }, true);
+  });
+  await registerAndLogin(page, account);
+  const posts: string[] = [];
+  page.on("request", (request) => { if (request.method() === "POST") posts.push(new URL(request.url()).pathname); });
+  await page.goto("/app");
+  const logout = page.getByRole("main").getByRole("button", { name: "Sign out", exact: true });
+  const dialog = page.getByRole("alertdialog");
+  async function settle(layer: Locator) {
+    await layer.evaluate((node) => Promise.all(node.getAnimations().map((animation) => animation.finished.catch(() => {}))));
+  }
+  async function closeAnimated(layer: Locator, trigger: Locator) {
+    await expect(layer).toHaveCSS("animation-name", "expense-layer-enter");
+    await expect(layer).toHaveCSS("animation-duration", "0.16s");
+    await settle(layer);
+    await page.evaluate(() => { document.documentElement.dataset.layerMotion = ""; });
+    await page.keyboard.press("Escape");
+    await expect.poll(() => page.locator("html").getAttribute("data-layer-motion")).toContain("expense-layer-exit");
+    await expect(layer).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+  }
+  await logout.click();
+  await expect(dialog.getByRole("button", { name: "No", exact: true })).toBeFocused();
+  await settle(dialog);
+  const bounds = await dialog.boundingBox();
+  const viewport = page.viewportSize()!;
+  expect(bounds && Math.abs(bounds.x + bounds.width / 2 - viewport.width / 2) < 2 && Math.abs(bounds.y + bounds.height / 2 - viewport.height / 2) < 2).toBeTruthy();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await page.screenshot({ path: testInfo.outputPath("animated-dialog.png") });
+  await closeAnimated(dialog, logout);
+  await expect.poll(() => page.locator("html").getAttribute("data-layer-motion")).toContain("expense-backdrop-exit");
+  const profile = page.getByRole("button", { name: "Open profile menu" });
+  for (let index = 0; index < 2; index++) {
+    await profile.click();
+    await closeAnimated(page.getByRole("menu"), profile);
+  }
+  const navigation = page.getByRole("button", { name: "Open navigation", exact: true });
+  if (await navigation.isVisible()) {
+    await navigation.click();
+    const drawer = page.getByRole("dialog", { name: "Workspace navigation", exact: true });
+    await expect(drawer).toHaveCSS("--layer-x", "-16px");
+    await closeAnimated(drawer, navigation);
+  }
+  await page.goto("/transactions/new");
+  const type = page.getByLabel("Type", { exact: true });
+  await type.click();
+  await closeAnimated(page.getByRole("listbox"), type);
+  await selectOption(type, "INCOME");
+  await expect(type).toHaveText("Income");
+  const calendar = page.getByRole("button", { name: "Choose Date", exact: true });
+  await calendar.click();
+  await closeAnimated(page.getByRole("dialog", { name: "Date picker", exact: true }), calendar);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await type.click();
+  await expect(page.getByRole("listbox")).toHaveCSS("animation-name", "none");
+  await page.keyboard.press("Escape");
+  await expect(type).toBeFocused();
+  await calendar.click();
+  await expect(page.getByRole("dialog", { name: "Date picker", exact: true })).toHaveCSS("animation-name", "none");
+  await page.keyboard.press("Escape");
+  await expect(calendar).toBeFocused();
+  await page.goto("/app");
+  await logout.click();
+  await expect(dialog).toHaveCSS("animation-name", "none");
+  await expect(page.locator('[data-slot="alert-dialog-overlay"]')).toHaveCSS("animation-name", "none");
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await expect(logout).toBeFocused();
+  await accessibleAndFits(page);
+  expect(posts).toEqual([]);
+});
+
+test("dynamic monthly expense line chart shares filters, exact amounts and the optional bar view", async ({ page, account }, testInfo) => {
+  await registerAndLogin(page, account);
+  const range = "/dashboard?from=2026-10-01&to=2026-12-31";
+  await page.goto(range);
+  await expect(page.getByLabel("Trend view", { exact: true })).toHaveText("Line chart");
+  await expect(page.getByText("No spending to plot yet", { exact: true })).toBeVisible();
+  await expect(page.getByRole("group", { name: "Monthly expense line chart", exact: true })).toHaveCount(0);
+  await createTransaction(page, "EXPENSE", "100", "Food", "Line fixture food", "2026-11-01");
+  await createTransaction(page, "EXPENSE", "200", "Travel", "Line fixture travel", "2026-12-31");
+  await createTransaction(page, "INCOME", "500", "Salary", "Line fixture income", "2026-11-01");
+  await page.goto(range);
+  const line = page.getByRole("group", { name: "Monthly expense line chart", exact: true });
+  await expect(line.locator(".recharts-line-curve")).toHaveCount(1);
+  await expect(line.locator(".recharts-line-dots .recharts-dot")).toHaveCount(3);
+  await line.getByRole("application").focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(line.getByText(/MMK\s+(?:0|100|200)$/)).toBeVisible();
+  const point = line.locator(".recharts-line-dots .recharts-dot").nth(1);
+  await point.scrollIntoViewIfNeeded();
+  const bounds = await point.boundingBox();
+  if (!bounds) throw new Error("Monthly expense point is not visible");
+  // A keyboard-selected active dot overlays the base point; hover the actual screen position.
+  await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+  await expect(line.getByText(/MMK\s+100/)).toBeVisible();
+  await page.getByRole("button", { name: "View exact monthly amounts", exact: true }).click();
+  const table = page.getByRole("region", { name: "Monthly expense table", exact: true });
+  await expect(table.getByRole("row").filter({ hasText: "Oct 2026" })).toContainText(/MMK\s+0/);
+  await expect(table.getByRole("row").filter({ hasText: "Nov 2026" })).toContainText(/MMK\s+100/);
+  await expect(table.getByRole("row").filter({ hasText: "Dec 2026" })).toContainText(/MMK\s+200/);
+  await selectOption(page.getByLabel("Trend view", { exact: true }), "bar");
+  await expect(page.getByRole("group", { name: "Monthly expense bar chart", exact: true })).toBeVisible();
+  await expect(page.getByRole("main").locator(".recharts-bar-rectangle")).not.toHaveCount(0);
+  await selectOption(page.getByLabel("Trend view", { exact: true }), "line");
+  await line.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: testInfo.outputPath("monthly-expense-line-range.png") });
+  await page.getByRole("button", { name: "Food", exact: true }).click();
+  await expect(page).toHaveURL((url) => !!url.searchParams.get("categoryId"));
+  await expect(page.getByRole("main").locator('[data-summary="expenses"]')).toHaveAttribute("data-amount", "100");
+  await expect(line.locator(".recharts-line-curve")).toHaveCount(1);
+  const filters = page.getByRole("form", { name: "Dashboard filters", exact: true });
+  await filters.getByLabel("From", { exact: true }).fill("2026-12-01");
+  await filters.getByLabel("To", { exact: true }).fill("2026-12-31");
+  await selectOption(filters.getByLabel("Expense category", { exact: true }), "");
+  await filters.getByRole("button", { name: "Apply filters", exact: true }).click();
+  await expect(page.getByRole("main").locator('[data-summary="expenses"]')).toHaveAttribute("data-amount", "200");
+  await expect(line.locator(".recharts-line-dots .recharts-dot")).toHaveCount(1);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await accessibleAndFits(page);
+  await page.screenshot({ path: testInfo.outputPath("monthly-expense-line-single-month.png"), fullPage: true });
+  await workspaceNavigate(page, "Analytics");
+  await expect(page.getByRole("group", { name: "Monthly expense line chart", exact: true }).locator(".recharts-line-dots .recharts-dot")).toHaveCount(1);
+});
+
 test("shadcn calendar selection keeps exact dates, keyboard access and budget months", async ({ page, account }, testInfo) => {
   const browserSession = await page.context().newCDPSession(page);
   await browserSession.send("Emulation.setTimezoneOverride", { timezoneId: "America/Los_Angeles" });
@@ -32,7 +164,7 @@ test("shadcn calendar selection keeps exact dates, keyboard access and budget mo
   const picker = page.getByRole("dialog", { name: "Date picker", exact: true });
   await expect(picker).toBeVisible();
   await picker.getByRole("spinbutton", { name: "Year", exact: true }).fill("2028");
-  await picker.getByRole("combobox").selectOption("1");
+  await selectOption(picker.getByRole("combobox"), "1");
   await expect(picker.getByRole("button", { name: /February 29, 2028/ })).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -64,7 +196,7 @@ test("shadcn calendar selection keeps exact dates, keyboard access and budget mo
   await page.keyboard.press("Escape");
   await expect(trigger).toBeFocused();
   await page.getByLabel("Amount (MMK)", { exact: true }).fill("125");
-  await page.getByLabel("Category", { exact: true }).selectOption({ label: "Food" });
+  await selectOption(page.getByLabel("Category", { exact: true }), { label: "Food" });
   await trigger.click();
   await picker.getByRole("button", { name: "Clear", exact: true }).click();
   await page.getByRole("button", { name: "Create transaction", exact: true }).click();
@@ -74,7 +206,7 @@ test("shadcn calendar selection keeps exact dates, keyboard access and budget mo
   expect(await page.getByLabel("Date", { exact: true }).evaluate((input: HTMLInputElement) => input.checkValidity())).toBe(false);
   await trigger.click();
   await picker.getByRole("spinbutton", { name: "Year", exact: true }).fill("2028");
-  await picker.getByRole("combobox").selectOption("1");
+  await selectOption(picker.getByRole("combobox"), "1");
   await picker.getByRole("button", { name: /February 29, 2028/ }).click();
   await page.getByRole("button", { name: "Create transaction", exact: true }).click();
   await expect(page).toHaveURL(/saved=created/);
@@ -146,9 +278,9 @@ test("dedicated analytics explores real cash flow, category and clipped month fi
   await expect(page.getByRole("main").locator('[data-summary="income"]')).toHaveAttribute("data-amount", "1000");
   await expect(page.getByRole("main").locator('[data-summary="expenses"]')).toHaveAttribute("data-amount", "500");
   await expect(page.getByRole("main").locator('[data-summary="balance"]')).toHaveAttribute("data-amount", "500");
-  await page.getByLabel("Chart view", { exact: true }).selectOption("net");
+  await selectOption(page.getByLabel("Chart view", { exact: true }), "net");
   await expect(page.getByRole("heading", { name: "Monthly net cash flow", exact: true })).toBeVisible();
-  await page.getByLabel("Chart view", { exact: true }).selectOption("cumulative");
+  await selectOption(page.getByLabel("Chart view", { exact: true }), "cumulative");
   await expect(page.getByRole("heading", { name: "Cumulative selected-range cash flow", exact: true })).toBeVisible();
   await page.getByText("View exact cash flow amounts", { exact: true }).click();
   const table = page.getByRole("region", { name: "Exact monthly cash flow table", exact: true });
@@ -161,7 +293,7 @@ test("dedicated analytics explores real cash flow, category and clipped month fi
   await expect(page).toHaveURL((url) => url.pathname === "/analytics" && url.searchParams.get("from") === "2024-02-10" && url.searchParams.get("to") === "2024-02-29");
   await expect(page.getByRole("main").locator('[data-summary="expenses"]')).toHaveAttribute("data-amount", "200");
   await page.goto(range);
-  await page.getByLabel("Chart view", { exact: true }).selectOption("net");
+  await selectOption(page.getByLabel("Chart view", { exact: true }), "net");
   const netChart = page.getByRole("group", { name: "Monthly net cash flow chart", exact: true });
   const netDot = await netChart.locator(".recharts-line-dots .recharts-dot").last().boundingBox();
   const surface = netChart.getByRole("application");
@@ -384,9 +516,20 @@ test("toast notifications cover native validation, repeated authentication error
 
 async function workspaceNavigate(page: Page, name: string) {
   await expect(page.locator(".app-shell")).toBeVisible();
+  await expect(page.locator('.ui-layer-motion[data-state="closed"], .ui-backdrop-motion[data-state="closed"]')).toHaveCount(0);
   const trigger = page.getByRole("button", { name: "Open navigation", exact: true });
-  if (await trigger.isVisible()) await trigger.click();
-  await page.getByRole("link", { name, exact: true }).filter({ visible: true }).click();
+  const mobile = await trigger.isVisible();
+  const drawer = page.getByRole("dialog", { name: "Workspace navigation", exact: true });
+  if (mobile) {
+    await trigger.click();
+    await expect(drawer).toHaveAttribute("data-state", "open");
+    await drawer.evaluate(async (node) => { await Promise.all(node.getAnimations().map((animation) => animation.finished.catch(() => {}))); });
+  }
+  const link = page.getByRole("link", { name, exact: true }).filter({ visible: true });
+  const target = new URL((await link.getAttribute("href"))!, page.url());
+  await link.click();
+  await expect(page).toHaveURL((url) => url.pathname === target.pathname);
+  if (mobile) await expect(drawer).toHaveCount(0);
 }
 
 test("workspace navigation, Frosted Glass, collapse and mobile drawer preserve existing pages", async ({ page, account }, testInfo) => {
@@ -458,7 +601,7 @@ async function chooseDate(page: Page, label: string, value: string) {
   const picker = page.getByRole("dialog", { name: `${label} picker`, exact: true });
   const [year, month, day] = value.split("-");
   await picker.getByRole("spinbutton", { name: "Year", exact: true }).fill(year);
-  await picker.getByRole("combobox").selectOption(String(Number(month) - 1));
+  await selectOption(picker.getByRole("combobox"), String(Number(month) - 1));
   const monthName = new Intl.DateTimeFormat("en-US", { month: "long", timeZone: "UTC" }).format(new Date(`${value}T12:00:00Z`));
   await picker.getByRole("button", { name: new RegExp(`${monthName} ${Number(day)}, ${year}`) }).click();
   await expect(page.getByRole("main").getByLabel(label, { exact: true })).toHaveValue(value);
@@ -466,8 +609,13 @@ async function chooseDate(page: Page, label: string, value: string) {
 
 async function accessibleAndFits(page: Page) {
   await test.step(`Accessibility and width: ${new URL(page.url()).pathname}`, async () => {
+    await page.locator(".ui-layer-motion, .ui-backdrop-motion").evaluateAll(async (nodes) => {
+      await Promise.all(nodes.flatMap((node) => node.getAnimations()).map((animation) => animation.finished.catch(() => {})));
+    });
+    await expect(page.locator('.ui-layer-motion[data-state="closed"], .ui-backdrop-motion[data-state="closed"]')).toHaveCount(0);
     await expect(page.locator("main:visible")).toHaveCount(1);
     await expect(page.locator("main:visible")).toBeVisible();
+    await expect(page).toHaveTitle(/Smart Expense/);
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= window.innerWidth,
@@ -509,21 +657,19 @@ async function createTransaction(
       .click();
   }
   await expect(page).toHaveURL(/\/transactions\/new$/);
-  await page
+  await selectOption(page
     .getByRole("main")
     .getByLabel("Type", { exact: true })
-    .filter({ visible: true })
-    .selectOption(type);
+    .filter({ visible: true }), type);
   await page
     .getByRole("main")
     .getByLabel("Amount (MMK)", { exact: true })
     .filter({ visible: true })
     .fill(amount);
-  await page
+  await selectOption(page
     .getByRole("main")
     .getByLabel("Category", { exact: true })
-    .filter({ visible: true })
-    .selectOption({ label: category });
+    .filter({ visible: true }), { label: category });
   await chooseDate(page, "Date", occurredOn);
   await page
     .getByRole("main")
@@ -758,8 +904,9 @@ test("receipt drag and drop validates files, preserves picker access and saves o
   await expect(error).toHaveText("Choose one receipt image at a time.");
   const pixels = await sharp({ create: { width: 80, height: 100, channels: 3, background: "white" } }).png().toBuffer();
   await input.focus();
+  await expect(input).toBeFocused();
   const choosing = page.waitForEvent("filechooser");
-  await page.keyboard.press("Enter");
+  await input.press("Space");
   await (await choosing).setFiles({ name: "keyboard.png", mimeType: "image/png", buffer: pixels });
   await expect(error).toHaveText("");
   const preview = page.getByRole("img", { name: "Selected receipt for checking extracted fields" });
@@ -860,7 +1007,7 @@ test("receipt validation, uncertainty, editable review, explicit save and dashbo
   await mockScenario("normal");
   await uploadReceipt(page);
   await expect(page.getByRole("main").getByLabel("Final total (whole kyat)", { exact: true })).toHaveValue("12500");
-  await expect(page.getByRole("main").getByLabel("Currency", { exact: true })).toHaveValue("MMK");
+  await expect(page.getByRole("main").getByLabel("Currency", { exact: true })).toHaveText("MMK (Ks) — whole kyat");
   const receiptPreview = page.getByRole("img", { name: "Selected receipt for checking extracted fields" });
   await expect(receiptPreview).toBeVisible();
   await expect.poll(() => receiptPreview.evaluate((image) => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
@@ -996,11 +1143,10 @@ test("unequal group bills, invalid totals, percentage editing and recorded repay
     .filter({ visible: true })
     .fill("100");
   await chooseDate(page, "Date", date);
-  await page
+  await selectOption(page
     .getByRole("main")
     .getByLabel("Who paid?", { exact: true })
-    .filter({ visible: true })
-    .selectOption({ label: "A" });
+    .filter({ visible: true }), { label: "A" });
   await page
     .getByRole("main")
     .getByLabel("A (you)", { exact: true })
@@ -1053,16 +1199,14 @@ test("unequal group bills, invalid totals, percentage editing and recorded repay
   await page
     .getByRole("link", { name: "Record repayment", exact: true })
     .click();
-  await page
+  await selectOption(page
     .getByRole("main")
     .getByLabel("Who repaid?", { exact: true })
-    .filter({ visible: true })
-    .selectOption({ label: "B" });
-  await page
+    .filter({ visible: true }), { label: "B" });
+  await selectOption(page
     .getByRole("main")
     .getByLabel("Who received it?", { exact: true })
-    .filter({ visible: true })
-    .selectOption({ label: "A" });
+    .filter({ visible: true }), { label: "A" });
   await page
     .getByRole("main")
     .getByLabel("Repaid amount (MMK)", { exact: true })
@@ -1083,11 +1227,10 @@ test("unequal group bills, invalid totals, percentage editing and recorded repay
     .getByLabel("Bill total (MMK)", { exact: true })
     .filter({ visible: true })
     .fill("101");
-  await page
+  await selectOption(page
     .getByRole("main")
     .getByLabel("Allocate shares by", { exact: true })
-    .filter({ visible: true })
-    .selectOption("PERCENT");
+    .filter({ visible: true }), "PERCENT");
   await page
     .getByRole("main")
     .getByLabel("A (you)", { exact: true })
@@ -1312,3 +1455,54 @@ test("monthly category budgets preserve expenses and do not roll over", async ({
   await page.goto(dashboard);
   await expect(page.locator("[data-summary=expenses]")).toHaveAttribute("data-amount", "100");
 });
+
+test("shadcn selects preserve required fields, empty filters, keyboard focus and native form values", async ({ page, account }) => {
+  await registerAndLogin(page, account);
+  await page.goto("/transactions/new");
+  const category = page.getByLabel("Category", { exact: true });
+  const form = category.locator("xpath=ancestor::form");
+  expect(await form.evaluate((node: HTMLFormElement) => new FormData(node).get("categoryId"))).toBe("");
+  await page.getByLabel("Amount (MMK)", { exact: true }).fill("100");
+  let posts = 0;
+  page.on("request", (request) => { if (request.method() === "POST") posts++; });
+  await page.getByRole("button", { name: "Create transaction", exact: true }).click();
+  await expect(category).toBeFocused();
+  await expect(category).toHaveAttribute("aria-invalid", "true");
+  expect(posts).toBe(0);
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("listbox")).toBeVisible();
+  expect((await new AxeBuilder({ page }).include('[role="listbox"]').analyze()).violations).toEqual([]);
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("listbox")).toBeVisible();
+  expect(await page.getByRole("listbox").evaluate((node) => node.contains(document.activeElement))).toBe(true);
+  await page.keyboard.press("Escape");
+  await expect(category).toBeFocused();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await selectOption(category, { label: "Food" });
+  const chosen = await form.evaluate((node: HTMLFormElement) => new FormData(node).get("categoryId"));
+  expect(chosen).toMatch(/^[\da-f-]{36}$/);
+  await form.evaluate((node: HTMLFormElement) => node.reset());
+  await expect(category).toHaveText("Food");
+  await expect.poll(() => form.evaluate((node: HTMLFormElement) => new FormData(node).get("categoryId"))).toBe(chosen);
+  await selectOption(page.getByLabel("Type", { exact: true }), "INCOME");
+  await expect(category).toHaveText("Choose a category");
+  expect(await form.evaluate((node: HTMLFormElement) => new FormData(node).get("categoryId"))).toBe("");
+  await page.goto("/transactions");
+  const type = page.getByLabel("Type", { exact: true });
+  await selectOption(type, "EXPENSE");
+  await selectOption(type, "");
+  await page.getByRole("button", { name: "Apply", exact: true }).click();
+  const query = new URL(page.url()).searchParams;
+  expect(query.get("type") ?? "").toBe("");
+  expect(query.get("categoryId") ?? "").toBe("");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+async function selectOption(field: Locator, choice: string | { label: string }) {
+  await field.click();
+  const list = field.page().getByRole("listbox");
+  const option = typeof choice === "string"
+    ? list.locator('[role="option"][data-value=' + JSON.stringify(choice) + ']')
+    : list.getByRole("option", { name: choice.label, exact: true });
+  await option.click();
+}

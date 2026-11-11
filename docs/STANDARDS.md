@@ -4,6 +4,8 @@ Applies when implementation is authorized. [REQUIREMENTS.md](REQUIREMENTS.md) ow
 
 ## Code and boundaries
 
+- Use shared shadcn Select/FormSelect for dropdowns. Preserve empty FormData values, required validation, labels, controlled drafts, resets and inherited disabled fieldsets. Keep options keyboard accessible and viewport bounded; retain Radix's hidden native form bridge. Serve private thumbnails through authenticated/no-store responses; never serialize bytes into sessions or UI profile data.
+
 - Keep TypeScript strict. Use explicit domain types at boundaries, `unknown` for untrusted data, and Zod parsing instead of unsafe assertions or `any`.
 - Keep root `app/`; use feature folders for domain code and `components/ui/` for shared shadcn/ui primitives. Reuse existing code before adding helpers. Avoid generic service/repository hierarchies.
 - Prefer Server Components; use client boundaries only for interactivity and charts. Receipt extraction runs server-only under D-04; return minimal serializable suggestions. Mark privileged modules server-only.

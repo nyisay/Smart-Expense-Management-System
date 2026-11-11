@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { FormSelect } from "@/components/ui/form-select";
 import { todayInReportingTimezone } from "@/lib/dates";
 import { reportingHref, defaultDashboardRange, monthIndex, monthKey, type ReportingPath, type DashboardFilters } from "./filters";
 import type { DashboardData } from "./store";
@@ -90,19 +90,12 @@ export function ReportingFilters({data, path = "/dashboard"}: {data: Pick<Dashbo
             </div>
             <div className="space-y-2">
               <Label htmlFor={`${prefix}-category`}>Expense category</Label>
-              <NativeSelect
+              <FormSelect
                 id={`${prefix}-category`}
                 name="categoryId"
                 className="w-full"
                 defaultValue={data.filters.categoryId ?? ""}
-              >
-                <NativeSelectOption value="">All categories</NativeSelectOption>
-                {data.expenseCategories.map((category) => (
-                  <NativeSelectOption key={category.id} value={category.id}>
-                    {category.name}
-                  </NativeSelectOption>
-                ))}
-              </NativeSelect>
+               options={[{value:"",label:"All categories"},...data.expenseCategories.map(category=>({value:category.id,label:category.name}))]} />
             </div>
             <div className="flex gap-2">
               <Button type="submit">Apply filters</Button>

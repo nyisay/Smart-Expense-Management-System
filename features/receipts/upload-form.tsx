@@ -8,10 +8,7 @@ import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  NativeSelect,
-  NativeSelectOption,
-} from "@/components/ui/native-select";
+import { FormSelect } from "@/components/ui/form-select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { CategoryOption } from "@/features/transactions/schemas";
 import type { ReceiptSuggestion } from "./schemas";
@@ -148,49 +145,28 @@ function ReviewForm({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="review-currency">Currency</Label>
-                <NativeSelect
+                <FormSelect
                   className="w-full"
                   id="review-currency"
                   name="currency"
                   required
                   value={values.currency}
-                  onChange={(e) => change("currency", e.target.value)}
+                  onValueChange={(value) => change("currency", value)}
                   {...validation("currency")}
-                >
-                  <NativeSelectOption value="">
-                    Verify currency
-                  </NativeSelectOption>
-                  {values.currency && values.currency !== "MMK" && (
-                    <NativeSelectOption value={values.currency} disabled>
-                      {values.currency} — unsupported
-                    </NativeSelectOption>
-                  )}
-                  <NativeSelectOption value="MMK">
-                    MMK (Ks) — whole kyat
-                  </NativeSelectOption>
-                </NativeSelect>
+                 options={[{value:"",label:"Verify currency"},...(values.currency&&values.currency!=="MMK"?[{value:values.currency,label:`${values.currency} — unsupported`,disabled:true}]:[]),{value:"MMK",label:"MMK (Ks) — whole kyat"}]} />
                 {error("currency")}
               </div>
               <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor="review-categoryId">Expense category</Label>
-                <NativeSelect
+                <FormSelect
                   className="w-full"
                   id="review-categoryId"
                   name="categoryId"
                   required
                   value={values.categoryId}
-                  onChange={(e) => change("categoryId", e.target.value)}
+                  onValueChange={(value) => change("categoryId", value)}
                   {...validation("categoryId")}
-                >
-                  <NativeSelectOption value="">
-                    Choose a category
-                  </NativeSelectOption>
-                  {categories.map((category) => (
-                    <NativeSelectOption key={category.id} value={category.id}>
-                      {category.name}
-                    </NativeSelectOption>
-                  ))}
-                </NativeSelect>
+                 options={[{value:"",label:"Choose a category"},...categories.map(category=>({value:category.id,label:category.name}))]} />
                 {error("categoryId")}
               </div>
             </div>

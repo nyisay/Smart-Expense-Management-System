@@ -4,12 +4,26 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/features/auth/session";
 import { logoutAction } from "@/features/auth/actions";
-import { AccountError, updateProfile, changePassword } from "./store";
+import { AccountError, updateProfile, changePassword, updateProfilePhoto, removeProfilePhoto } from "./store";
+import { ProfilePhotoError } from "./photo";
 
 export type AccountState = { ok: boolean; message: string; errors?: Record<string, string[] | undefined> };
 function failure(error: unknown): AccountState {
   if (error instanceof z.ZodError) return { ok: false, message: "Please correct the highlighted fields.", errors: z.flattenError(error).fieldErrors };
-  return { ok: false, message: error instanceof AccountError ? error.message : "Unable to save right now. Your entries have been kept. Please retry." };
+  return { ok: false, message: error instanceof AccountError || error instanceof ProfilePhotoError ? error.message : "Unable to save right now. Your entries have been kept. Please retry." };
+}
+
+export async function updateProfilePhotoAction(_state: AccountState, form: FormData): Promise<AccountState> {
+  const user = await requireUser();
+  let intent: "upload" | "remove";
+  try {
+    intent = z.enum(["upload", "remove"]).parse(form.get("intent"));
+    const expected = { expectedPhotoId: form.get("expectedPhotoId") };
+    if (intent === "remove") await removeProfilePhoto(user.id, expected);
+    else await updateProfilePhoto(user.id, expected, form.get("photo"));
+  } catch (error) { return failure(error); }
+  revalidatePath("/", "layout");
+  return { ok: true, message: intent === "remove" ? "Your profile photo has been removed." : "Your profile photo has been updated." };
 }
 
 export async function updateProfileAction(_state: AccountState, form: FormData): Promise<AccountState> {

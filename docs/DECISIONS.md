@@ -1,5 +1,11 @@
 # Decision log
 
+## D-14 — Owner-only PostgreSQL profile thumbnails
+
+Status: Accepted on 2026-11-12. The user requested profile-photo upload and explicitly answered “Approve PostgreSQL thumbnails (recommended)” when asked to approve persistent storage. This supersedes D-09's profile-photo deferral only. No external storage service or public photo sharing is added.
+
+Accept a static JPG/PNG/WebP up to 2,000,000 bytes, validate/decode it server-side, strip metadata and create a centered 256×256 WebP thumbnail capped at 65,536 bytes. Store only the processed bytes and a nullable opaque revision UUID on User; paired-null and size constraints protect persistence. Server-owned upload/replacement/removal compares the expected photo revision to prevent overwriting another change. Serve the signed-in owner's image through an authenticated, no-store Node route; never include bytes in JWT/session cookies, public URLs, logs or browser storage. Existing initials remain the fallback. Keep financial records and authentication credentials unchanged. Prepare/apply the additive migration on disposable local PostgreSQL for verification; configured/production database migration and deployment remain release steps, not automatic production changes.
+
 ## D-13 — Dedicated interactive Analytics page
 
 Status: Accepted on 2026-11-11. The user explicitly requested a separate Analytics page because its navigation returned to Dashboard, plus dynamic analytics. This supersedes D-06's Analytics anchor shortcut only; Settings remains `/app` and Frosted Glass remains the sole appearance.

@@ -136,10 +136,38 @@
 }
 
 @media (pointer: coarse) {
-  [data-slot="button"], [data-slot="native-select"] { min-height: 44px; }
+  [data-slot="button"], [data-slot="select-trigger"], [data-slot="select-item"] { min-height: 44px; }
 }
 
+/* Radix retains closing layers until these finite CSS animations finish. */
+.ui-layer-motion {
+  --layer-x: 0px;
+  --layer-y: 6px;
+  --layer-scale: 0.985;
+  transform-origin: var(--radix-dropdown-menu-content-transform-origin, var(--radix-select-content-transform-origin, var(--radix-popover-content-transform-origin, center)));
+}
+.ui-menu-motion { --layer-y: 4px; }
+.ui-menu-motion[data-side="top"] { --layer-y: -4px; }
+.ui-menu-motion[data-side="left"] { --layer-x: -4px; --layer-y: 0px; }
+.ui-menu-motion[data-side="right"] { --layer-x: 4px; --layer-y: 0px; }
+.ui-drawer-motion { --layer-x: -16px; --layer-y: 0px; --layer-scale: 1; }
+.ui-layer-motion[data-state="open"] { animation: expense-layer-enter 160ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+.ui-layer-motion[data-state="closed"] { animation: expense-layer-exit 110ms ease-in both; pointer-events: none; }
+.ui-backdrop-motion[data-state="open"] { animation: expense-backdrop-enter 160ms ease-out both; }
+.ui-backdrop-motion[data-state="closed"] { animation: expense-backdrop-exit 110ms ease-in both; pointer-events: none; }
+@keyframes expense-layer-enter {
+  from { opacity: 0; transform: translate(var(--layer-x), var(--layer-y)) scale(var(--layer-scale)); }
+  to { opacity: 1; transform: translate(0, 0) scale(1); }
+}
+@keyframes expense-layer-exit {
+  from { opacity: 1; transform: translate(0, 0) scale(1); }
+  to { opacity: 0; transform: translate(var(--layer-x), var(--layer-y)) scale(var(--layer-scale)); }
+}
+@keyframes expense-backdrop-enter { from { opacity: 0; } to { opacity: 1; } }
+@keyframes expense-backdrop-exit { from { opacity: 1; } to { opacity: 0; } }
+
 @media (prefers-reduced-motion: reduce) {
+  .ui-layer-motion, .ui-backdrop-motion { animation: none !important; }
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
@@ -183,7 +211,7 @@
     background: ButtonFace;
     border: 1px solid ButtonText;
   }
-  [data-slot="native-select"] {
+  [data-slot="select-trigger"], [data-slot="select-content"], [data-slot="select-item"] {
     color: FieldText;
     background: Field;
     border: 1px solid FieldText;
@@ -210,7 +238,7 @@ html { scroll-padding-top: 1.5rem; }
 #main-content main { animation: none; }
 #main-content h1 { letter-spacing: -0.035em; }
 #main-content [data-slot="card"] { --card-spacing: 1.25rem; }
-[data-slot="input"], [data-slot="textarea"], [data-slot="native-select"] { font-size: 1rem; }
+[data-slot="input"], [data-slot="textarea"], [data-slot="select-trigger"] { font-size: 1rem; }
 @media (min-width: 1024px) {
   .app-shell { display: grid; grid-template-columns: var(--sidebar-width) minmax(0, 1fr); transition: grid-template-columns 180ms ease; }
   .app-shell[data-collapsed="true"] { --sidebar-width: 80px; }
