@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { calendarDateSchema } from "@/lib/dates";
 import { createTransactionSchema } from "@/features/transactions/schemas";
+import { integerInputSchema } from "@/lib/validation";
 
 export const budgetMonthSchema = z.string().regex(/^\d{4}-\d{2}$/).refine(
   (value) => calendarDateSchema.safeParse(`${value}-01`).success,
@@ -9,7 +10,7 @@ export const budgetMonthSchema = z.string().regex(/^\d{4}-\d{2}$/).refine(
 const identity = {
   month: budgetMonthSchema,
   categoryId: z.uuid(),
-  version: z.coerce.number().int().min(0).max(2147483646),
+  version: integerInputSchema(0, 2147483646),
   id: z.preprocess((value) => value === "" || value === null ? undefined : value, z.uuid().optional()),
 };
 export const saveBudgetSchema = z.strictObject({

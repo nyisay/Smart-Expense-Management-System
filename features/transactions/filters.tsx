@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import {
   NativeSelect,
@@ -65,10 +66,10 @@ export function TransactionFiltersForm({
       </div>
       <div className="space-y-2">
         <Label htmlFor="filter-from">From</Label>
-        <Input
+        <DatePicker
           id="filter-from"
+          label="From"
           name="from"
-          type="date"
           min="1900-01-01"
           max="9999-12-31"
           defaultValue={filters.from ?? ""}
@@ -76,10 +77,10 @@ export function TransactionFiltersForm({
       </div>
       <div className="space-y-2">
         <Label htmlFor="filter-to">To</Label>
-        <Input
+        <DatePicker
           id="filter-to"
+          label="To"
           name="to"
-          type="date"
           min="1900-01-01"
           max="9999-12-31"
           defaultValue={filters.to ?? ""}

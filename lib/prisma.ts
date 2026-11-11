@@ -2,19 +2,19 @@ import "server-only";
 
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@/app/generated/prisma/client";
+import { databaseUrlSchema } from "./env";
 
 const globalForPrisma = globalThis as typeof globalThis & {
   prisma?: PrismaClient;
 };
 
 function createPrismaClient() {
-  const connectionString = process.env.DATABASE_URL;
-
-  if (!connectionString) {
-    throw new Error("DATABASE_URL is required for application queries.");
+  const connection = databaseUrlSchema.safeParse(process.env.DATABASE_URL);
+  if (!connection.success) {
+    throw new Error("Missing or invalid database configuration: DATABASE_URL.");
   }
 
-  const adapter = new PrismaPg({ connectionString });
+  const adapter = new PrismaPg({ connectionString: connection.data });
   return new PrismaClient({ adapter });
 }
 

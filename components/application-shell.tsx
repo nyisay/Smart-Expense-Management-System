@@ -1,19 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { Dialog, Tooltip, DropdownMenu } from "radix-ui";
 import { LayoutDashboard, ArrowLeftRight, ScanLine, Users, ChartNoAxesCombined, Target, Settings, LogOut, PanelLeftClose, PanelLeftOpen, Menu, X, WalletCards, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { logoutAction } from "@/features/auth/actions";
+import { LogoutConfirmation } from "@/features/auth/logout-confirmation";
 
 const navigation = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/transactions", label: "Transactions", icon: ArrowLeftRight },
   { href: "/receipts/new", label: "Receipt Scanner", icon: ScanLine },
   { href: "/groups", label: "Groups & Splitting", icon: Users },
-  { href: "/dashboard#analytics", label: "Analytics", icon: ChartNoAxesCombined },
+  { href: "/analytics", label: "Analytics", icon: ChartNoAxesCombined },
   { href: "/budgets", label: "Budgets", icon: Target },
 ];
 
@@ -22,6 +22,7 @@ export function ApplicationShell({ user, children }: {
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [collapsed, setCollapsed] = useState(false);
   const [open, setOpen] = useState(false);
   function sidebar(compact: boolean, mobile = false) {
@@ -33,8 +34,15 @@ export function ApplicationShell({ user, children }: {
       <nav aria-label={mobile ? "Mobile application" : "Application"} className="space-y-1">
         {!compact && <p className="px-3 pb-2 text-[10px] font-medium uppercase tracking-widest text-muted-foreground">Workspace</p>}
         {navigation.map((item) => {
-          const active = !item.href.includes("#") && (pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(`${item.href}/`)));
-          const href = item.label === "Analytics" && pathname === "/dashboard" ? "#analytics" : item.href;
+          const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(`${item.href}/`));
+          const params = new URLSearchParams();
+          if (["/dashboard", "/analytics"].includes(pathname) && ["/dashboard", "/analytics"].includes(item.href)) {
+            for (const key of ["from", "to", "categoryId"]) {
+              const value = searchParams.get(key);
+              if (value) params.set(key, value);
+            }
+          }
+          const href = params.size ? `${item.href}?${params}` : item.href;
           const link = <Link href={href} aria-label={compact ? item.label : undefined} aria-current={active ? "page" : undefined} onClick={() => setOpen(false)} className={`sidebar-link flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm transition-colors hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:outline-ring ${active ? "bg-sidebar-accent font-medium text-primary" : "text-sidebar-foreground"}`}>
             <item.icon className="size-[18px] shrink-0" aria-hidden="true" />{!compact && item.label}
           </Link>;
@@ -44,7 +52,7 @@ export function ApplicationShell({ user, children }: {
       <div className="mt-auto space-y-4 border-t border-sidebar-border pt-4">
         <Link href="/app" title={compact ? "Settings" : undefined} aria-label="Settings" aria-current={pathname === "/app" ? "page" : undefined} onClick={() => setOpen(false)} className="sidebar-link flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:outline-ring"><Settings className="size-[18px] shrink-0" aria-hidden="true" />{!compact && "Settings"}</Link>
         {!compact && <Link href="/app" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-lg p-2 hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:outline-ring"><span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-sm font-semibold text-primary" aria-hidden="true">{user.name.slice(0, 1).toUpperCase()}</span><span className="min-w-0"><span className="block truncate text-sm font-medium">{user.name}</span><span className="block truncate text-xs text-muted-foreground">Your personal workspace</span></span></Link>}
-        <form action={logoutAction}><Button variant="ghost" className="w-full justify-start" aria-label="Log out" title={compact ? "Log out" : undefined}><LogOut aria-hidden="true" />{!compact && "Log out"}</Button></form>
+        <LogoutConfirmation><Button type="button" variant="ghost" className="w-full justify-start" aria-label="Log out" title={compact ? "Log out" : undefined}><LogOut aria-hidden="true" />{!compact && "Log out"}</Button></LogoutConfirmation>
       </div>
     </div>;
   }

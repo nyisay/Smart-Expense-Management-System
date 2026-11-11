@@ -13,6 +13,7 @@ Applies when implementation is authorized. [REQUIREMENTS.md](REQUIREMENTS.md) ow
 ## Input, authorization, and persistence
 
 - Apply server-side Zod schemas to every form/action/handler boundary: lengths, enums, IDs, dates, amount precision, and configured bounds. Client validation improves UX but is not authoritative. OCR output remains untrusted input.
+- Use `lib/validation.ts` for bounded page/revision metadata: validate integer numbers or decimal-digit strings before conversion. Do not broadly coerce untrusted booleans, arrays, null or empty values into numbers. Monetary inputs retain the separate exact-money schemas. Reuse `databaseUrlSchema` at Prisma initialization and keep configuration errors free of input values.
 - Resolve identity on the server. Scope every query and write to the owner, including nested group/member/bill relationships. Reject unauthorized IDs without leaking record existence. Authorize again at each callable mutation, even behind a protected layout.
 - Use parameterized Prisma operations. Make dependent writes atomic; enforce structural constraints in the database and cross-row invariants in the one authorized write path. Handle unique-key races, stale versions, and failed transactions deliberately.
 - Implement retry-safe create submissions. Preserve entered values after validation or network errors and disable duplicate clicks as a UX aid.

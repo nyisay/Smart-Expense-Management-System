@@ -30,6 +30,21 @@ for (const route of ["/login", "/register"]) {
     } else await expect(photo).toBeHidden();
     await expect(page.getByLabel("Email", { exact: true })).toHaveAttribute("autocomplete", "email");
     await expect(page.getByLabel("Password", { exact: true })).toHaveAttribute("type", "password");
+    for (const label of route === "/register" ? ["Name", "Email", "Password"] : ["Email", "Password"]) {
+      const field = page.getByLabel(label, { exact: true });
+      const idleBorder = await field.evaluate((element) => getComputedStyle(element).borderBottomColor);
+      await field.hover();
+      await expect(field).toHaveCSS("border-top-width", "0px");
+      await expect(field).toHaveCSS("border-left-width", "0px");
+      await expect(field).toHaveCSS("border-right-width", "0px");
+      await expect(field).toHaveCSS("border-bottom-width", "1px");
+      await expect(field).toHaveCSS("border-bottom-color", idleBorder);
+      await field.focus();
+      await expect(field).toHaveCSS("border-bottom-width", "2px");
+      await expect.poll(() => field.evaluate((element) => getComputedStyle(element).borderBottomColor)).not.toBe(idleBorder);
+      expect(await field.evaluate((element) => (getComputedStyle(element).boxShadow.match(/-?[\d.]+px/g) ?? []).every((length) => parseFloat(length) === 0))).toBe(true);
+      await field.blur();
+    }
     await expect(page.locator("html")).toHaveAttribute("data-theme", "frosted");
     await expect(page.getByLabel("Appearance", { exact: true })).toHaveCount(0);
     const results = await new AxeBuilder({ page }).analyze();

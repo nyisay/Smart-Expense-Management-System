@@ -1,8 +1,18 @@
 # Local setup and verification
 
+## Receipt drag and drop
+
+Open Receipt Scanner and drag one JPG, PNG or WebP onto the outlined upload area, or use the labeled file picker with pointer/keyboard. The area highlights while dragging. Check the preview, then choose **Extract receipt**; dropping a file alone sends nothing. Multiple files, empty files, unsupported types and images above 4,000,000 bytes show an error. Choose a valid replacement to clear it. Drops during extraction are ignored. Review/correct the suggestion and explicitly confirm before saving. This upload interaction does not resolve missing Vercel/Ollama Cloud configuration; the production receipt investigation remains separate.
+
+## Using date and budget-month pickers
+
+Click the calendar icon beside a date to open the shadcn calendar. Change month with the caption dropdown/arrows; use Year for older/future dates. Select a day, or choose Today/Clear. Keyboard users can activate the icon with Enter/Space or press Alt+ArrowDown in the input; Escape closes the popup and returns focus. Budgets show month buttons and This month. ISO typing (YYYY-MM-DD, or YYYY-MM for budgets) remains supported and validated. Dates remain in Asia/Yangon and post exactly the chosen calendar day, regardless of the device timezone. Clearing a required date blocks submission; empty optional transaction date filters are allowed.
+
 ## Account settings and password updates (D-09)
 
 Open **Settings** (`/app`) to edit your display name and view your sign-in email/member-since date. Frosted Glass is the only appearance; there is no appearance selector. Email, currency and reporting timezone are read-only. Reset changes restores the last saved name. A stale profile form rejects a newer change made in another tab; reload before retrying.
+
+**Log out** in desktop/mobile navigation and **Sign out** in Settings open a Yes/No confirmation. **No** or Escape closes it without signing out and returns focus to the original control. **Yes** submits logout and returns to login. No is focused initially; confirmation buttons disable while logout is processing. Password updates already explicitly sign out all sessions and do not ask again after the password has changed.
 
 Under **Password & security**, enter your current password, a different new password of 12–128 characters and matching confirmation. Eye controls reveal only their associated field. **Update password and sign out** invalidates every existing session and returns this device to login. Other devices are rejected on their next authenticated request; the feature does not erase already-rendered content remotely. Sign in again using the new password. Invalid current passwords and mismatches preserve the form with feedback; five password verification attempts per 15-minute window are allowed.
 
@@ -63,7 +73,9 @@ If another tab changes the group while confirmation is open, deletion is rejecte
 
 **Frosted Glass is the only appearance** on every page, including login/sign-up. Dark Base and all Appearance buttons/selectors are removed. The server renders the frosted state before client JavaScript runs; old saved choices are ignored, and disabled browser storage does not affect appearance. The background photograph is unchanged. Reduced transparency, no-blur, forced-color and print fallbacks remain available automatically for accessibility.
 
-Desktop navigation has a collapse/expand control; icon links expose names/tooltips. On tablet/mobile, use **Open navigation**, select a destination or press Escape to close. Analytics navigates to the existing dashboard chart section; Settings uses the existing account page. No standalone empty Analytics/Settings routes were added.
+Desktop navigation has a collapse/expand control; icon links expose names/tooltips. On tablet/mobile, use **Open navigation**, select a destination or press Escape to close. Analytics opens `/analytics`, retaining selected date/category filters when navigating from Dashboard. Settings uses the existing account page.
+
+Analytics checks: create personal income/expenses in different months, select a date range and switch **Chart view** between income/expenses, monthly net and cumulative cash flow. Expand **View exact cash flow amounts** and check that final running net equals selected income minus selected expenses. It starts at zero for the selection, not an account balance. Click a month/table link to inspect it; partial months retain original boundaries. Choose an expense category to update every section, then open matching transactions. Group bills/repayments must remain excluded. Check empty dates, invalid-filter recovery, keyboard operation and mobile layout.
 
 Manual presentation checks:
 

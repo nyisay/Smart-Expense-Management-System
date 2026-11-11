@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -138,15 +139,15 @@ export function TransactionForm({
           </div>
           <div className="space-y-2">
             <Label htmlFor="occurredOn">Date</Label>
-            <Input
+            <DatePicker
               id="occurredOn"
+              label="Date"
               name="occurredOn"
-              type="date"
               min="1900-01-01"
               max="9999-12-31"
               required
               value={values.occurredOn}
-              onChange={(event) => change("occurredOn", event.target.value)}
+              onValueChange={(value) => change("occurredOn", value)}
               {...validation("occurredOn")}
             />
             {error("occurredOn")}

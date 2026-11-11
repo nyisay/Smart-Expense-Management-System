@@ -272,6 +272,10 @@ test(
           "Your ledger starts here",
         ),
       );
+      for (const page of ["1e2", "0x10", "1.0", ""]) {
+        const invalid = await (await request(`/transactions?page=${page}`)).text();
+        assert.ok(invalid.includes("These filters are invalid"));
+      }
       const categories = await prisma.category.findMany();
       const categoryId = categories.find(
         (category) => category.key === "expense-food",

@@ -4,7 +4,7 @@ import { todayInReportingTimezone } from "@/lib/dates";
 import { loadBudgets } from "@/features/budgets/store";
 import { budgetMonthSchema } from "@/features/budgets/schemas";
 import { BudgetView } from "@/features/budgets/view";
-import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
@@ -20,7 +20,7 @@ export default async function BudgetsPage({ searchParams }: { searchParams: Prom
     <h1 className="text-3xl font-semibold tracking-tight">Monthly category budgets</h1>
     <p className="text-sm text-muted-foreground">Full calendar month · MMK · Asia/Yangon. No rollover or prorating. Unset limits stay unbudgeted. Group expenses are excluded.</p>
     <form action="/budgets" className="flex flex-wrap items-end gap-3">
-      <div className="space-y-2"><Label htmlFor="budget-month">Budget month</Label><Input id="budget-month" name="month" type="month" min="1900-01" max="9999-12" defaultValue={data.month} key={data.month} required /></div>
+      <div className="space-y-2"><Label htmlFor="budget-month">Budget month</Label><DatePicker id="budget-month" label="Budget month" name="month" precision="month" min="1900-01" max="9999-12" defaultValue={data.month} key={data.month} required /></div>
       <Button>Choose month</Button>
     </form>
     {query.saved === "yes" && <p role="status">Budget updated. Transactions were not changed.</p>}

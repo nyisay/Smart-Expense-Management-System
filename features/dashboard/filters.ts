@@ -41,13 +41,28 @@ export type DashboardFilters = z.output<
   ReturnType<typeof dashboardFilterSchema>
 >;
 
+export type ReportingPath = "/dashboard" | "/analytics";
+
+export function reportingHref(filters: DashboardFilters, path: ReportingPath, categoryId = filters.categoryId) {
+  const params = new URLSearchParams({ from: filters.from, to: filters.to });
+  if (categoryId) params.set("categoryId", categoryId);
+  return `${path}?${params}`;
+}
+
+export function monthDrilldown(filters: DashboardFilters, month: string): DashboardFilters {
+  const first = calendarDateSchema.parse(`${month}-01`);
+  const last = new Date(`${first}T00:00:00Z`);
+  last.setUTCMonth(last.getUTCMonth() + 1, 0);
+  const end = last.toISOString().slice(0, 10);
+  if (first > filters.to || end < filters.from) throw new Error("Month is outside the selected range.");
+  return { ...filters, from: filters.from > first ? filters.from : first, to: filters.to < end ? filters.to : end };
+}
+
 export function dashboardHref(
   filters: DashboardFilters,
   categoryId = filters.categoryId,
 ) {
-  const params = new URLSearchParams({ from: filters.from, to: filters.to });
-  if (categoryId) params.set("categoryId", categoryId);
-  return `/dashboard?${params}`;
+  return reportingHref(filters, "/dashboard", categoryId);
 }
 
 export function relatedTransactionsHref(filters: DashboardFilters) {

@@ -1,8 +1,10 @@
 import "server-only";
 import { z } from "zod";
 
+export const databaseUrlSchema = z.url().refine((value) => /^postgres(ql)?:/.test(value));
+
 const schema = z.object({
-  DATABASE_URL: z.url().refine((value) => /^postgres(ql)?:/.test(value)),
+  DATABASE_URL: databaseUrlSchema,
   AUTH_SECRET: z
     .string()
     .min(32)

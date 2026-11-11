@@ -42,6 +42,8 @@ test("budget storage isolates owners, preserves transactions, rejects stale limi
   await assert.rejects(saveBudget(randomUUID(), input));
   await assert.rejects(saveBudget(users[0], { ...input, categoryId: salary.id }));
   for (const amount of ["0", "1.5", "9000000000000001"]) await assert.rejects(saveBudget(users[0], { ...input, amount }));
+  for (const version of [null, true, ["0"], "", "0e0"]) await assert.rejects(saveBudget(users[0], { ...input, version }));
+  assert.equal(await prisma.budget.count({ where: { ownerId: users[0] } }), 0);
   await Promise.all([saveBudget(users[0], input), saveBudget(users[0], input)]);
   await createTransaction(users[0], { type: "EXPENSE", amount: "101", categoryId: food.id, occurredOn: "2026-11-30", merchant: "Budget fixture", note: "", submissionKey: randomUUID() });
   await createTransaction(users[0], { type: "EXPENSE", amount: "40", categoryId: food.id, occurredOn: "2026-12-01", merchant: "Next month", note: "", submissionKey: randomUUID() });

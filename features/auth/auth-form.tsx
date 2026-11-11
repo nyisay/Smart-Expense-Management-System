@@ -15,7 +15,7 @@ import { beginLoginToast } from "@/components/ui/toaster";
 
 export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const registering = mode === "register";
-  const fieldStyle = "rounded-none border-x-0 border-t-0 bg-transparent pl-0 shadow-none";
+  const fieldStyle = "rounded-none border-x-0 border-t-0 bg-transparent pl-0 shadow-none focus-visible:border-b-2 focus-visible:ring-0";
   const [state, action, pending] = useActionState(
     registering ? registerAction : loginAction,
     { ok: false, message: "" },

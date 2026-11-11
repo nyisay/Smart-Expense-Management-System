@@ -19,11 +19,13 @@
     "db:seed:dev": "node --conditions=react-server --import tsx prisma/seed-dev.ts"
   },
   "dependencies": {
+    "@date-fns/tz": "1.5.0",
     "@prisma/adapter-pg": "7.10.1",
     "@prisma/client": "7.10.1",
     "argon2": "0.45.2",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.5.2",
+    "date-fns": "4.4.0",
     "dotenv": "^18.0.9",
     "lucide-react": "^1.69.0",
     "next": "16.4.5",
@@ -31,6 +33,7 @@
     "pg": "^8.23.1",
     "radix-ui": "^1.8.1",
     "react": "19.3.0",
+    "react-day-picker": "10.0.2",
     "react-dom": "19.3.0",
     "recharts": "3.10.1",
     "server-only": "0.0.1",

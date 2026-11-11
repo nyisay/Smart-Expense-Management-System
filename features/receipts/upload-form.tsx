@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { useActionState, useEffect, useRef, useState } from "react";
+import { ImageUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -131,15 +133,15 @@ function ReviewForm({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="review-occurredOn">Transaction date</Label>
-                <Input
+                <DatePicker
                   id="review-occurredOn"
+                  label="Transaction date"
                   name="occurredOn"
                   required
-                  type="date"
                   min="1900-01-01"
                   max="9999-12-31"
                   value={values.occurredOn}
-                  onChange={(e) => change("occurredOn", e.target.value)}
+                  onValueChange={(value) => change("occurredOn", value)}
                   {...validation("occurredOn")}
                 />
                 {error("occurredOn")}
@@ -261,7 +263,22 @@ export function ReceiptUploadForm({
   useFeedbackToast(state, "Receipt ready for review", "Receipt extraction failed");
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [uploadError, setUploadError] = useState("");
+  const [dragging, setDragging] = useState(false);
+  const dragDepth = useRef(0);
+  const imageInput = useRef<HTMLInputElement>(null);
   const preview = useRef<HTMLImageElement>(null);
+  function selectImage(files: File[]) {
+    const input = imageInput.current;
+    if (!input || pending) return false;
+    const image = files[0];
+    const message = files.length > 1 ? "Choose one receipt image at a time." :
+      image && (image.size === 0 || image.size > MAX_RECEIPT_BYTES || !RECEIPT_MIME_TYPES.some((type) => type === image.type)) ? RECEIPT_UPLOAD_ERROR : "";
+    if (message) input.value = "";
+    input.setCustomValidity(message);
+    setUploadError(message);
+    setSelectedImage(message ? null : image ?? null);
+    return !message;
+  }
   useEffect(() => {
     const element = preview.current;
     if (!selectedImage || !element) return;
@@ -281,25 +298,47 @@ export function ReceiptUploadForm({
         <CardContent>
           <form action={action} onInvalidCapture={toastInvalidInput} className="space-y-4 rounded-xl border border-dashed border-input bg-muted/20 p-4 sm:p-6">
             <Label htmlFor="receipt-image">Receipt image</Label>
+            <div role="group" aria-label="Receipt image upload" aria-disabled={pending}
+              data-dragging={dragging}
+              className={`space-y-4 rounded-xl border-2 border-dashed p-5 transition-colors ${dragging ? "border-primary bg-primary/10" : "border-input bg-background/30"} ${pending ? "opacity-60" : ""}`}
+              onDragEnter={(event) => {
+                event.preventDefault();
+                if (pending || !event.dataTransfer.types.includes("Files")) return;
+                dragDepth.current++;
+                setDragging(true);
+              }}
+              onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = pending ? "none" : "copy"; }}
+              onDragLeave={(event) => {
+                event.preventDefault();
+                dragDepth.current = Math.max(0, dragDepth.current - 1);
+                if (!dragDepth.current) setDragging(false);
+              }}
+              onDrop={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                dragDepth.current = 0;
+                setDragging(false);
+                if (pending || !event.dataTransfer.files.length) return;
+                if (selectImage(Array.from(event.dataTransfer.files)) && imageInput.current) imageInput.current.files = event.dataTransfer.files;
+              }}>
+              <div className="space-y-2 text-center">
+                <ImageUp className="mx-auto size-8 text-primary" aria-hidden="true" />
+                <p className="font-medium">{dragging ? "Drop your receipt here" : "Drag and drop a receipt here"}</p>
+                <p id="receipt-drop-help" className="text-sm text-muted-foreground">One JPG, PNG or WebP, up to 4 MB. Or choose a file below. Extraction starts only when you click Extract receipt.</p>
+              </div>
             <Input
+              ref={imageInput}
               id="receipt-image"
               name="image"
               type="file"
               accept={RECEIPT_MIME_TYPES.join(",")}
               required
               disabled={pending}
-              aria-describedby="receipt-limits receipt-photo-help receipt-upload-error"
+              aria-describedby="receipt-drop-help receipt-limits receipt-photo-help receipt-upload-error"
               aria-invalid={Boolean(uploadError)}
-              onChange={(event) => {
-                const image = event.target.files?.[0];
-                const valid = image && image.size > 0 && image.size <= MAX_RECEIPT_BYTES &&
-                  RECEIPT_MIME_TYPES.some((type) => type === image.type);
-                const message = image && !valid ? RECEIPT_UPLOAD_ERROR : "";
-                event.target.setCustomValidity(message);
-                setUploadError(message);
-                setSelectedImage(valid ? image : null);
-              }}
+              onChange={(event) => selectImage(Array.from(event.target.files ?? []))}
             />
+            </div>
             <p id="receipt-upload-error" role={uploadError ? "alert" : undefined} className="text-sm text-destructive">
               {uploadError}
             </p>

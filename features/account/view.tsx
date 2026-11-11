@@ -2,7 +2,7 @@ import Link from "next/link";
 import { CalendarDays, Check, CircleUserRound, Globe2, LockKeyhole, LogOut, ShieldCheck, Wallet } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { logoutAction } from "@/features/auth/actions";
+import { LogoutConfirmation } from "@/features/auth/logout-confirmation";
 import { REPORTING_TIMEZONE } from "@/lib/money";
 import { ProfileForm, PasswordForm } from "./forms";
 
@@ -82,7 +82,7 @@ export function AccountView({ profile }: { profile: { name: string; email: strin
         </Card></section>
         <Card><CardContent className="flex flex-col gap-4 pt-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1"><h2 className="font-medium">Done for now?</h2><p className="text-sm text-muted-foreground">Sign out of this device. Your records stay safe in your account.</p></div>
-          <form action={logoutAction}><Button type="submit" variant="outline"><LogOut aria-hidden="true" />Sign out</Button></form>
+          <LogoutConfirmation><Button type="button" variant="outline"><LogOut aria-hidden="true" />Sign out</Button></LogoutConfirmation>
         </CardContent></Card>
       </div>
     </div>

@@ -18,11 +18,13 @@ This explicitly approved operation is the exception to the earlier retained-hist
 
 ## Shared presentation shell (D-06)
 
+Date controls (D-11): `components/ui/date-picker.tsx` composes the official Calendar/Popover with existing inputs and buttons. Its day/month controls keep named ISO text inputs in FormData, server validation and controlled feature-state contracts. Dashboard/filter islands remain small client controls inside server views. `lib/calendar-input.ts` bridges ISO strings and timezone-aware calendar objects without importing React; storage, aggregations, authorization and the reporting timezone remain unchanged. Only an opened client popover constructs the calendar view, avoiding current-time reads during prerender. Direct year entry avoids rendering thousands of year options. Existing shared Button was preserved when importing registry components.
+
 Toast follow-up: the root layout mounts a single client `Toaster` inside Suspense. A small form-feedback hook observes action result objects and publishes generic success/error notices without changing server authorization or auth actions. Auth success follows the existing login redirect using a short-lived in-memory UI intent; no extra authentication request, URL flag, cookie or persisted token is introduced. Receipt extraction adds only a UI-result `ok` flag; extraction/review/save boundaries remain unchanged. Installed Radix supplies notification behavior with no new package.
 
 The protected layout retains its server-side `requireUser()` and Suspense boundary, then passes minimal profile fields and server-rendered page children to `components/application-shell.tsx`. The client shell owns only navigation collapse/drawer/profile interaction. Every existing data query/action still authorizes separately. No private data is moved into shared caching or browser storage.
 
-`app/globals.css` owns the single Frosted Glass token set and responsive shell spacing (D-10). The root server layout emits data-theme=frosted; the frosted tokens are the CSS defaults, so no preference bootstrap, client theme component or browser storage is needed. Old smart-expense-theme values are ignored. The `.dark` class remains only to support existing dark-surface utility variants. Opaque no-blur/reduced-transparency, forced-color and print fallbacks remain. `/app` hosts profile/reporting/security settings and `/dashboard#analytics` hosts analytics. Business routes and database/API boundaries are unchanged.
+`app/globals.css` owns the single Frosted Glass token set and responsive shell spacing (D-10). The root server layout emits data-theme=frosted; the frosted tokens are the CSS defaults, so no preference bootstrap, client theme component or browser storage is needed. Old smart-expense-theme values are ignored. The `.dark` class remains only to support existing dark-surface utility variants. Opaque no-blur/reduced-transparency, forced-color and print fallbacks remain. `/app` hosts profile/reporting/security settings; `/analytics` is the dedicated analysis route under D-13, superseding the former dashboard anchor. Database/API boundaries are unchanged.
 
 ## D-05 extension — Monthly planning and analytics
 
@@ -46,6 +48,7 @@ features/auth/              # Zod schemas, service, password hashing, throttles,
 features/account/           # owned profile edits, current-password changes, settings presentation
 features/transactions/      # schemas, owner-scoped store, session wrappers, actions, forms
 features/dashboard/         # filters, PostgreSQL aggregation, exact summaries, Recharts views
+features/analytics/         # dedicated analysis view and interactive chart-mode selection
 features/receipts/          # image validation, local/cloud Ollama, suggestions, explicit review/save
 features/groups/            # exact allocations, owned group ledger, balances, forms/actions
 components/ui/              # shadcn/ui primitives and small shared controls
@@ -57,6 +60,23 @@ types/                      # Auth.js session augmentation
 
 shadcn/ui is initialized with the official CLI's Radix/nova preset and Tailwind v4 tokens. Its existing primitives support transaction and dashboard UI. Recharts 3.10.1 is pinned for the dashboard's client-side donut and monthly bar chart. Installed Next.js guides for mutations, data security and authentication with Cache Components govern framework integration.
 
+## Input validation boundaries
+
+Existing feature schemas remain the source of truth. Server Actions construct allowed fields and resolve the authenticated user; server-only stores validate payloads and enforce ownership before financial operations. Route/query inputs are validated before use. Native form constraints supplement these checks without being trusted as authorization.
+
+| Boundary | Zod source |
+| --- | --- |
+| Registration and login | `features/auth/schemas.ts`, used by authentication services |
+| Profile/password changes | `features/account/schemas.ts`, used by the owned account store |
+| Transaction CRUD, dates, money and filters | `features/transactions/schemas.ts` with `lib/dates.ts` and exact `lib/money.ts` parsing |
+| Dashboard/Analytics filters | `features/dashboard/filters.ts`, shared authenticated reporting loader/store |
+| Budget month/limits/revisions | `features/budgets/schemas.ts`, owned budget store |
+| Group participants, bills, shares and repayments | `features/groups/schemas.ts` and `calculations.ts`, owned group store |
+| Receipt image/provider/configuration/review | `features/receipts/image.ts`, `provider.ts` and `schemas.ts` |
+| Server configuration and Prisma connection | `lib/env.ts`; Prisma initialization reuses `databaseUrlSchema` and returns only a safe variable-name error |
+
+`lib/validation.ts` shares bounded integer-scalar validation for pagination and transaction/group/budget revisions. Validate the input type and decimal-digit string before Number conversion, then enforce integer/range bounds. This avoids the broader JavaScript coercion performed by [Zod coercion](https://zod.dev/api#coercion), including booleans/arrays/null becoming integers. Financial amounts continue through exact string/bigint schemas. Existing route, API, auth, provider, currency and database-model decisions remain unchanged; no client cache is introduced.
+
 ## Current routes
 
 | URL | Behavior |
@@ -66,6 +86,7 @@ shadcn/ui is initialized with the official CLI's Radix/nova preset and Tailwind 
 | `/login` | Public email/password sign-in |
 | `/app` | Protected profile, reporting preferences, password/security settings and POST sign-out |
 | `/dashboard` | Protected financial overview, shared date/category filters, charts and recent records |
+| `/analytics` | Protected cash-flow explorer, clipped month/category drill-down, comparisons and insights |
 | `/transactions` | Owner-scoped list, URL filters, 20-row pagination |
 | `/transactions/new` | Income/expense creation with retry key |
 | `/receipts/new` | Protected temporary upload, selected Ollama extraction and editable confirmation |
@@ -87,11 +108,13 @@ List count and page rows use one RepeatableRead snapshot, newest business date/c
 
 ## Dashboard aggregation and interaction
 
-The public dashboard query derives the current user through requireUser; its server-only store verifies the principal and validates inclusive date/category inputs with Zod. Parameterized Prisma.sql groups the user's Transaction rows by type, category and calendar month in PostgreSQL. SUM is cast to text to retain arbitrarily large integer aggregates; validated calendar strings are cast directly to SQL dates to avoid session-timezone shifts. One RepeatableRead transaction also fetches the latest eight matching entries and fixed expense category labels.
+Dashboard and Analytics share `getReportingData`, which resolves the persisted principal and validates date/category inputs before using the existing owner-scoped store. `ReportingFilters` renders route-aware date/category controls and presets; sidebar links retain only reporting filters between these two routes. Analytics adds chart modes through a small client explorer. The shared cash-flow helper calculates cumulative net with bigint and serializes exact strings; only chart coordinates use Number. Month links and chart clicks constrain drill-down to the selected date boundaries, including partial months. Tables provide keyboard-accessible month links and exact running totals. Both report routes remain request-authorized Server Components without new API endpoints or financial caches. Transactions, confirmed receipts and budgets invalidate `/analytics` alongside the existing overview. Group operations do not enter personal reports.
+
+The shared reporting query derives the current user through requireUser; its server-only store verifies the principal and validates inclusive date/category inputs with Zod. Parameterized Prisma.sql groups the user's Transaction rows by type, category and calendar month in PostgreSQL. SUM is cast to text to retain arbitrarily large integer aggregates; validated calendar strings are cast directly to SQL dates to avoid session-timezone shifts. One RepeatableRead transaction also fetches the latest eight matching entries and fixed expense category labels.
 
 A small pure server aggregation derives income, expenses, balance, category totals and zero-filled month buckets from the grouped result. All authoritative values serialize as integer strings. Cards, donut, trend and recent entries use exactly the same owner/date/category predicate and snapshot. Only Recharts coordinates use approximate numbers; currency labels, tooltips, percentages and accessible tables retain exact values. No demo seed or hardcoded transaction values feed runtime charts.
 
-The default is the current calendar month in Asia/Yangon. Shortcuts cover this month, the current and previous five calendar months through today, and year to date; custom ranges are bounded to 120 calendar months for a readable, bounded chart. Clicking a donut slice or its keyboard-accessible category button navigates to a category-filtered dashboard URL; every section updates together. An expense-only category has zero income and a negative selected-range balance. Clicking the selected category again or clearing the filter restores all categories. View all links to the same date/category filters on the transaction list. Transaction mutations also revalidate /dashboard.
+The default is the current calendar month in Asia/Yangon. Shortcuts cover this month, month to date, the current and previous five calendar months through today, and year to date; custom ranges are bounded to 120 calendar months for a readable, bounded chart. Clicking a donut slice or its keyboard-accessible category button navigates to a category-filtered URL on the current report route; every section updates together. An expense-only category has zero income and a negative selected-range balance. Clicking the selected category again or clearing the filter restores all categories. Matching transaction links use the same date/category filters on the transaction list. Transaction mutations also revalidate `/dashboard` and `/analytics`.
 
 Initial navigation has a skeleton, category transitions announce pending updates, and zero-expense ranges show meaningful empty charts with exact zero tables. Group expenses/settlements remain outside personal dashboard accounting. The original daily-trend proposal is superseded by the user's explicit monthly-trend request; no separate daily chart was added.
 

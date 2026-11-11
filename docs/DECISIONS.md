@@ -1,5 +1,23 @@
 # Decision log
 
+## D-13 — Dedicated interactive Analytics page
+
+Status: Accepted on 2026-11-11. The user explicitly requested a separate Analytics page because its navigation returned to Dashboard, plus dynamic analytics. This supersedes D-06's Analytics anchor shortcut only; Settings remains `/app` and Frosted Glass remains the sole appearance.
+
+Add protected `/analytics` using the existing authenticated, validated reporting loader and PostgreSQL aggregation. Share date/category filters with Dashboard, retain those filters when moving between reports, and keep category drill-down on the active report route. Add selectable income/expense, monthly net and cumulative selected-range net chart modes, plus month drill-down clipped to the selected date boundaries. Running net starts at zero for the selection and is not a bank balance. Reuse exact tables, period comparisons and deterministic insights. Personal transactions remain separate from group bills/repayments; financial mutations invalidate both reports. No dependency, schema, currency, authorization, provider or cache architecture changes are needed. D-12 remains a proposal awaiting approval. No commit, push or deployment is authorized.
+
+## D-12 — TanStack Query financial read caching (proposed)
+
+Status: Proposed on 2026-11-11; architectural approval pending. The user requested caching like TanStack Query, useQuery/invalidation, 5–30 minute freshness and browser-focus refetching. Repository inspection found direct Prisma-backed Server Component reads and Next path invalidation, with no QueryClient. A client provider alone would not remove those reads.
+
+[CACHING_PLAN.md](CACHING_PLAN.md) proposes user-scoped in-memory queries, authenticated GET read adapters, five-minute financial freshness, thirty-minute category freshness/inactive retention, active financial refresh on focus/reconnect, and explicit post-commit invalidation/account cleanup. This changes the read/transport flow described in ARCHITECTURE.md; it is not yet an accepted replacement. Preserve live server authorization, exact financial DTOs, fresh edit/version checks, existing feature stores and all business rules. No application/dependency change is authorized by this proposal until the user approves the concrete data-flow change. No commit, push or deployment.
+
+## D-11 — Shared shadcn date and month pickers
+
+Status: Accepted UI scope on 2026-11-11. The user requested “in date selection use shadcn date component instead of manual.” This authorizes replacing existing native date/month controls, without changing their business meaning, authorization, routes, schema or database date representation. Retain ISO text entry as an alternative input method.
+
+Use the official Radix/nova Calendar and Popover source components with existing Button/Input primitives. Pin react-day-picker 10.0.2, date-fns 4.4.0 and its timezone helper @date-fns/tz 1.5.0; the latter is declared directly because the pure conversion helper must not import React UI under server test conditions. These are routine component dependencies, not a new date-storage architecture. Shared DatePicker supports day and budget-month precision, native required/custom validity, controlled drafts and normal FormData. Keep YYYY-MM-DD / YYYY-MM strings at the form boundary, existing Zod schemas and UTC database dates; bridge calendar Date objects using Asia/Yangon and explicit UTC construction so other browser zones cannot shift an entered calendar day. No deployment or commit is authorized.
+
 ## D-10 — Frosted Glass as the sole application appearance
 
 Status: Accepted on 2026-11-10. The user explicitly requested “frosted glass default and remove the dark base” and removal of the Appearance control. This supersedes D-06's selectable Dark Base/Frosted scheme and the appearance selector in D-09; account editing/security and all other scope remain unchanged.

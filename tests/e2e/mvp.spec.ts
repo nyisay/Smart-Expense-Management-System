@@ -20,6 +20,85 @@ const test = base.extend<{ account: { email: string; password: string } }>({
   },
 });
 
+test("shadcn calendar selection keeps exact dates, keyboard access and budget months", async ({ page, account }, testInfo) => {
+  const browserSession = await page.context().newCDPSession(page);
+  await browserSession.send("Emulation.setTimezoneOverride", { timezoneId: "America/Los_Angeles" });
+  await registerAndLogin(page, account);
+  await page.goto("/transactions/new");
+  const trigger = page.getByRole("button", { name: "Choose Date", exact: true });
+  await expect(trigger).toBeEnabled();
+  await trigger.focus();
+  await page.keyboard.press("Enter");
+  const picker = page.getByRole("dialog", { name: "Date picker", exact: true });
+  await expect(picker).toBeVisible();
+  await picker.getByRole("spinbutton", { name: "Year", exact: true }).fill("2028");
+  await picker.getByRole("combobox").selectOption("1");
+  await expect(picker.getByRole("button", { name: /February 29, 2028/ })).toBeVisible();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  const popup = await picker.boundingBox();
+  const viewport = page.viewportSize()!;
+  expect(popup && popup.x >= 0 && popup.y >= 0 && popup.x + popup.width <= viewport.width + 1 && popup.y + popup.height <= viewport.height + 1).toBeTruthy();
+  await page.screenshot({ path: testInfo.outputPath("date-picker.png"), fullPage: true });
+  await picker.getByRole("button", { name: /February 29, 2028/ }).focus();
+  await page.keyboard.press("Enter");
+  await expect(picker).toBeHidden();
+  await expect(page.getByLabel("Date", { exact: true })).toHaveValue("2028-02-29");
+  await expect(trigger).toBeFocused();
+  await trigger.click();
+  const selectedDay = picker.getByRole("button", { name: /February 29, 2028/ });
+  await selectedDay.hover();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await selectedDay.click();
+  await expect(page.getByLabel("Date", { exact: true })).toHaveValue("2028-02-29");
+  await expect(picker).toBeHidden();
+  await trigger.click();
+  const fields = page.getByRole("group", { name: "Transaction details", exact: true });
+  await fields.evaluate((element: HTMLFieldSetElement) => { element.disabled = true; });
+  await picker.getByRole("button", { name: "Clear", exact: true }).click();
+  await expect(page.getByLabel("Date", { exact: true })).toHaveValue("2028-02-29");
+  await page.keyboard.press("Escape");
+  await expect(picker).toBeHidden();
+  await fields.evaluate((element: HTMLFieldSetElement) => { element.disabled = false; });
+  await trigger.click();
+  await page.keyboard.press("Escape");
+  await expect(trigger).toBeFocused();
+  await page.getByLabel("Amount (MMK)", { exact: true }).fill("125");
+  await page.getByLabel("Category", { exact: true }).selectOption({ label: "Food" });
+  await trigger.click();
+  await picker.getByRole("button", { name: "Clear", exact: true }).click();
+  await page.getByRole("button", { name: "Create transaction", exact: true }).click();
+  await expect(page).toHaveURL(/\/transactions\/new$/);
+  await expect(page.getByLabel("Date", { exact: true })).toBeFocused();
+  await page.getByLabel("Date", { exact: true }).fill("2026-02-29");
+  expect(await page.getByLabel("Date", { exact: true }).evaluate((input: HTMLInputElement) => input.checkValidity())).toBe(false);
+  await trigger.click();
+  await picker.getByRole("spinbutton", { name: "Year", exact: true }).fill("2028");
+  await picker.getByRole("combobox").selectOption("1");
+  await picker.getByRole("button", { name: /February 29, 2028/ }).click();
+  await page.getByRole("button", { name: "Create transaction", exact: true }).click();
+  await expect(page).toHaveURL(/saved=created/);
+  await page.goto("/dashboard?from=2028-02-29&to=2028-02-29");
+  await expect(page.getByRole("main").locator('[data-summary="expenses"]')).toHaveAttribute("data-amount", "125");
+  await page.getByRole("button", { name: "Choose From", exact: true }).click();
+  await page.getByRole("dialog", { name: "From picker", exact: true }).getByRole("button", { name: /February 28, 2028/ }).click();
+  await page.getByRole("button", { name: "Apply filters", exact: true }).click();
+  await expect(page).toHaveURL(/from=2028-02-28/);
+  await page.goto("/transactions?from=2028-02-29&to=2028-02-29");
+  await page.getByRole("button", { name: "Choose From", exact: true }).click();
+  await page.getByRole("dialog", { name: "From picker", exact: true }).getByRole("button", { name: "Clear", exact: true }).click();
+  await page.getByRole("button", { name: "Apply", exact: true }).click();
+  await expect(page.getByLabel("From", { exact: true })).toHaveValue("");
+  await page.goto("/budgets?month=2028-02");
+  await page.getByRole("button", { name: "Choose Budget month", exact: true }).click();
+  const months = page.getByRole("dialog", { name: "Budget month picker", exact: true });
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await months.getByRole("button", { name: "Mar", exact: true }).click();
+  await expect(page.getByLabel("Budget month", { exact: true })).toHaveValue("2028-03");
+  await page.getByRole("button", { name: "Choose month", exact: true }).click();
+  await expect(page).toHaveURL(/month=2028-03/);
+});
+
 test("advanced filters survive transaction editing and deletion", async ({ page, account }) => {
   await registerAndLogin(page, account);
   await createTransaction(page, "EXPENSE", "150", "Food", "Search shop");
@@ -44,6 +123,80 @@ test("advanced filters survive transaction editing and deletion", async ({ page,
   await page.getByRole("button", { name: "Delete permanently", exact: true }).click();
   await expect(page.getByRole("heading", { name: "No matching transactions" })).toBeVisible();
   await expect(page.getByLabel("Search merchant or note")).toHaveValue("search");
+});
+
+test("dedicated analytics explores real cash flow, category and clipped month filters", async ({ page, account }, testInfo) => {
+  await page.goto("/analytics?from=2024-02-10&to=2024-03-05");
+  await expect(page).toHaveURL(/\/login/);
+  await registerAndLogin(page, account);
+  const range = "/analytics?from=2024-02-10&to=2024-03-05";
+  await page.goto(range);
+  await expect(page.getByRole("heading", { name: "Analytics", exact: true })).toBeVisible();
+  await expect(page.getByRole("main").locator('[data-summary="balance"]')).toHaveAttribute("data-amount", "0");
+  await expect(page.getByText("No income or expenses in this range.", { exact: true })).toBeVisible();
+  await accessibleAndFits(page);
+
+  await page.goto(dashboard);
+  await expect(page.getByRole("link", { name: "Add transaction", exact: true })).toBeVisible();
+  await createTransaction(page, "INCOME", "1000", "Salary", "Analytics income", "2024-02-10");
+  await createTransaction(page, "EXPENSE", "200", "Food", "Analytics food", "2024-02-29");
+  await createTransaction(page, "EXPENSE", "300", "Travel", "Analytics travel", "2024-03-05");
+  await createTransaction(page, "EXPENSE", "999", "Food", "Outside selection", "2024-03-06");
+  await page.goto(range);
+  await expect(page.getByRole("main").locator('[data-summary="income"]')).toHaveAttribute("data-amount", "1000");
+  await expect(page.getByRole("main").locator('[data-summary="expenses"]')).toHaveAttribute("data-amount", "500");
+  await expect(page.getByRole("main").locator('[data-summary="balance"]')).toHaveAttribute("data-amount", "500");
+  await page.getByLabel("Chart view", { exact: true }).selectOption("net");
+  await expect(page.getByRole("heading", { name: "Monthly net cash flow", exact: true })).toBeVisible();
+  await page.getByLabel("Chart view", { exact: true }).selectOption("cumulative");
+  await expect(page.getByRole("heading", { name: "Cumulative selected-range cash flow", exact: true })).toBeVisible();
+  await page.getByText("View exact cash flow amounts", { exact: true }).click();
+  const table = page.getByRole("region", { name: "Exact monthly cash flow table", exact: true });
+  await expect(table.getByRole("columnheader", { name: "Running net", exact: true })).toBeVisible();
+  await expect(table.getByRole("row").filter({ hasText: "Feb 2024" })).toContainText("800");
+  await expect(table.getByRole("row").filter({ hasText: "Mar 2024" })).toContainText("500");
+  await accessibleAndFits(page);
+  await page.screenshot({ path: testInfo.outputPath("analytics-cumulative.png"), fullPage: true });
+  await table.getByRole("link", { name: "Feb 2024", exact: true }).click();
+  await expect(page).toHaveURL((url) => url.pathname === "/analytics" && url.searchParams.get("from") === "2024-02-10" && url.searchParams.get("to") === "2024-02-29");
+  await expect(page.getByRole("main").locator('[data-summary="expenses"]')).toHaveAttribute("data-amount", "200");
+  await page.goto(range);
+  await page.getByLabel("Chart view", { exact: true }).selectOption("net");
+  const netChart = page.getByRole("group", { name: "Monthly net cash flow chart", exact: true });
+  const netDot = await netChart.locator(".recharts-line-dots .recharts-dot").last().boundingBox();
+  const surface = netChart.getByRole("application");
+  const surfaceBounds = await surface.boundingBox();
+  expect(netDot && surfaceBounds).toBeTruthy();
+  await surface.click({ position: { x: netDot!.x - surfaceBounds!.x + netDot!.width / 2, y: netDot!.y - surfaceBounds!.y + netDot!.height / 2 } });
+  await expect(page).toHaveURL((url) => url.pathname === "/analytics" && url.searchParams.get("from") === "2024-03-01" && url.searchParams.get("to") === "2024-03-05");
+  await page.goto(range);
+  await page.getByRole("group", { name: "Monthly income, expense and net cash flow chart", exact: true }).locator(".recharts-bar-rectangle").last().click();
+  await expect(page).toHaveURL((url) => url.pathname === "/analytics" && url.searchParams.get("from") === "2024-03-01" && url.searchParams.get("to") === "2024-03-05");
+  await expect(page.getByRole("main").locator('[data-summary="expenses"]')).toHaveAttribute("data-amount", "300");
+  await page.goto(range);
+  await page.getByRole("button", { name: "Food", exact: true }).click();
+  await expect(page).toHaveURL((url) => url.pathname === "/analytics" && !!url.searchParams.get("categoryId"));
+  const category = new URL(page.url()).searchParams.get("categoryId");
+  await expect(page.getByRole("main").locator('[data-summary="income"]')).toHaveAttribute("data-amount", "0");
+  await expect(page.getByRole("main").locator('[data-summary="expenses"]')).toHaveAttribute("data-amount", "200");
+  await page.getByRole("link", { name: "View matching transactions", exact: true }).click();
+  await expect(page).toHaveURL((url) => url.pathname === "/transactions" && url.searchParams.get("categoryId") === category && url.searchParams.get("to") === "2024-03-05");
+  await page.goto(`${range}&categoryId=${category}`);
+  await workspaceNavigate(page, "Dashboard");
+  await expect(page).toHaveURL((url) => url.pathname === "/dashboard" && url.searchParams.get("categoryId") === category);
+  await workspaceNavigate(page, "Analytics");
+  await expect(page).toHaveURL((url) => url.pathname === "/analytics" && url.searchParams.get("categoryId") === category);
+  await page.getByRole("button", { name: "Clear category selection", exact: true }).click();
+  await expect(page).toHaveURL((url) => url.pathname === "/analytics" && !url.searchParams.get("categoryId"));
+  await expect(page.getByRole("main").locator('[data-summary="expenses"]')).toHaveAttribute("data-amount", "500");
+  await chooseDate(page, "To", "2024-02-29");
+  await page.getByRole("button", { name: "Apply filters", exact: true }).click();
+  await expect(page).toHaveURL((url) => url.pathname === "/analytics" && url.searchParams.get("to") === "2024-02-29" && !url.searchParams.get("categoryId"));
+  await expect(page.getByRole("main").locator('[data-summary="expenses"]')).toHaveAttribute("data-amount", "200");
+  await page.goto("/analytics?from=2024-02-30");
+  await expect(page.getByRole("heading", { name: "Analytics filters need attention", exact: true })).toBeVisible();
+  await page.getByRole("link", { name: "Reset analytics filters", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Analytics", exact: true })).toBeVisible();
 });
 
 test("cash flow comparisons and rule-based insights reconcile recorded amounts", async ({ page, account }, testInfo) => {
@@ -131,6 +284,69 @@ async function registerAndLogin(
   await page.getByRole("button", { name: "Dismiss notification", exact: true }).click();
 }
 
+test("logout confirmation supports No, Escape and Yes from Settings and navigation", async ({ page, account }, testInfo) => {
+  await registerAndLogin(page, account);
+  await page.goto("/app");
+  const name = page.getByLabel("Display name", { exact: true });
+  await name.fill("Unsaved profile draft");
+  const settingsLogout = page.getByRole("main").getByRole("button", { name: "Sign out", exact: true });
+  const dialog = page.getByRole("alertdialog", { name: "Are you sure you want to log out?", exact: true });
+  const posts: string[] = [];
+  page.on("request", (request) => { if (request.method() === "POST") posts.push(new URL(request.url()).pathname); });
+  await settingsLogout.click();
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "No", exact: true })).toBeFocused();
+  const footer = dialog.locator('[data-slot="alert-dialog-footer"]');
+  await expect(footer).toHaveCSS("flex-direction", "row");
+  await expect(footer).toHaveCSS("justify-content", "center");
+  await expect(dialog.getByRole("button", { name: "Yes", exact: true })).toHaveAttribute("data-variant", "destructive");
+  await page.keyboard.press("Tab");
+  await expect(dialog.getByRole("button", { name: "Yes", exact: true })).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(dialog.getByRole("button", { name: "No", exact: true })).toBeFocused();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: testInfo.outputPath("logout-confirmation.png"), fullPage: true });
+  await dialog.getByRole("button", { name: "No", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(settingsLogout).toBeFocused();
+  await expect(name).toHaveValue("Unsaved profile draft");
+  await settingsLogout.click();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await expect(settingsLogout).toBeFocused();
+  expect(posts).toEqual([]);
+  await settingsLogout.click();
+  await dialog.getByRole("button", { name: "Yes", exact: true }).click();
+  await expect(page).toHaveURL(/\/login$/);
+  await page.goto("/analytics");
+  await expect(page).toHaveURL(/\/login/);
+  await page.getByLabel("Email", { exact: true }).fill(account.email);
+  await page.getByLabel("Password", { exact: true }).fill(account.password);
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+  const mobile = (page.viewportSize()?.width ?? 1366) < 1024;
+  if (mobile) await page.getByRole("button", { name: "Open navigation", exact: true }).click();
+  else {
+    await page.getByRole("button", { name: "Log out", exact: true }).click();
+    await dialog.getByRole("button", { name: "No", exact: true }).click();
+    await expect(page.getByRole("button", { name: "Log out", exact: true })).toBeFocused();
+    await page.getByRole("button", { name: "Collapse sidebar", exact: true }).click();
+  }
+  const sidebarLogout = page.getByRole("button", { name: "Log out", exact: true }).filter({ visible: true });
+  await sidebarLogout.click();
+  await expect(dialog.getByRole("button", { name: "No", exact: true })).toBeFocused();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await dialog.getByRole("button", { name: "No", exact: true }).click();
+  await expect(sidebarLogout).toBeFocused();
+  if (mobile) await expect(page.getByRole("dialog", { name: "Workspace navigation", exact: true })).toBeVisible();
+  await sidebarLogout.click();
+  await dialog.getByRole("button", { name: "Yes", exact: true }).click();
+  await expect(page).toHaveURL(/\/login$/);
+  await page.goto("/dashboard");
+  await expect(page).toHaveURL(/\/login/);
+});
+
 test("toast notifications cover native validation, repeated authentication errors and registration", async ({ page, account }, testInfo) => {
   await page.goto("/register");
   await page.getByRole("button", { name: "Register", exact: true }).click();
@@ -146,6 +362,7 @@ test("toast notifications cover native validation, repeated authentication error
   await registerAndLogin(page, account);
   await page.goto("/app");
   await page.getByRole("main").getByRole("button", { name: "Sign out", exact: true }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Yes", exact: true }).click();
   await expect(page).toHaveURL(/\/login$/);
   const failLogin = async () => {
     await page.getByLabel("Email", { exact: true }).fill(account.email);
@@ -205,10 +422,11 @@ test("workspace navigation, Frosted Glass, collapse and mobile drawer preserve e
   await expect(page.getByLabel("Appearance", { exact: true })).toHaveCount(0);
   await accessibleAndFits(page);
   await workspaceNavigate(page, "Analytics");
-  await expect(page).toHaveURL(/\/dashboard#analytics$/);
+  await expect(page).toHaveURL(/\/analytics$/);
+  await expect(page.getByRole("heading", { name: "Analytics", exact: true })).toBeVisible();
   await page.goto("/dashboard?from=2025-11-01&to=2025-11-08");
   await workspaceNavigate(page, "Analytics");
-  await expect(page).toHaveURL((url) => url.pathname === "/dashboard" && url.hash === "#analytics" && url.searchParams.get("from") === "2025-11-01" && url.searchParams.get("to") === "2025-11-08");
+  await expect(page).toHaveURL((url) => url.pathname === "/analytics" && !url.hash && url.searchParams.get("from") === "2025-11-01" && url.searchParams.get("to") === "2025-11-08");
   await expect(page.getByRole("heading", { name: "Income, expenses and net cash flow" })).toBeVisible();
   await page.goto("/transactions/new");
   await page.getByLabel("Amount (MMK)", { exact: true }).fill("12345");
@@ -234,6 +452,17 @@ test("workspace navigation, Frosted Glass, collapse and mobile drawer preserve e
     }
   }
 });
+
+async function chooseDate(page: Page, label: string, value: string) {
+  await page.getByRole("main").getByRole("button", { name: `Choose ${label}`, exact: true }).click();
+  const picker = page.getByRole("dialog", { name: `${label} picker`, exact: true });
+  const [year, month, day] = value.split("-");
+  await picker.getByRole("spinbutton", { name: "Year", exact: true }).fill(year);
+  await picker.getByRole("combobox").selectOption(String(Number(month) - 1));
+  const monthName = new Intl.DateTimeFormat("en-US", { month: "long", timeZone: "UTC" }).format(new Date(`${value}T12:00:00Z`));
+  await picker.getByRole("button", { name: new RegExp(`${monthName} ${Number(day)}, ${year}`) }).click();
+  await expect(page.getByRole("main").getByLabel(label, { exact: true })).toHaveValue(value);
+}
 
 async function accessibleAndFits(page: Page) {
   await test.step(`Accessibility and width: ${new URL(page.url()).pathname}`, async () => {
@@ -295,11 +524,7 @@ async function createTransaction(
     .getByLabel("Category", { exact: true })
     .filter({ visible: true })
     .selectOption({ label: category });
-  await page
-    .getByRole("main")
-    .getByLabel("Date", { exact: true })
-    .filter({ visible: true })
-    .fill(occurredOn);
+  await chooseDate(page, "Date", occurredOn);
   await page
     .getByRole("main")
     .getByLabel("Merchant or source")
@@ -499,6 +724,100 @@ async function uploadReceipt(page: Page) {
     .click();
 }
 
+test("receipt drag and drop validates files, preserves picker access and saves only after review", async ({ page, account }, testInfo) => {
+  await registerAndLogin(page, account);
+  await workspaceNavigate(page, "Receipt Scanner");
+  const zone = page.getByRole("group", { name: "Receipt image upload", exact: true });
+  const input = page.getByLabel("Receipt image", { exact: true });
+  const error = page.getByRole("main").locator("#receipt-upload-error");
+  let uploads = 0;
+  page.on("request", (request) => { if (request.method() === "POST" && new URL(request.url()).pathname === "/receipts/new") uploads++; });
+  const transfer = (files: { name: string; type: string; size?: number; base64?: string }[]) => page.evaluateHandle((items) => {
+    const data = new DataTransfer();
+    for (const item of items) {
+      const bytes = item.base64 ? Uint8Array.from(atob(item.base64), (character) => character.charCodeAt(0)) : new Uint8Array(item.size ?? 1);
+      data.items.add(new File([bytes], item.name, { type: item.type }));
+    }
+    return data;
+  }, files);
+  async function drop(files: { name: string; type: string; size?: number; base64?: string }[]) {
+    const data = await transfer(files);
+    try { await zone.dispatchEvent("drop", { dataTransfer: data }); }
+    finally { await data.dispose(); }
+  }
+  for (const file of [
+    { name: "unsupported.gif", type: "image/gif" },
+    { name: "empty.png", type: "image/png", size: 0 },
+    { name: "oversized.png", type: "image/png", size: 4_000_001 },
+  ]) {
+    await drop([file]);
+    await expect(error).toHaveText("Choose a JPG, PNG or WebP image up to 4 MB.");
+    expect(await input.evaluate((element: HTMLInputElement) => element.files?.length)).toBe(0);
+  }
+  await drop([{ name: "one.png", type: "image/png" }, { name: "two.png", type: "image/png" }]);
+  await expect(error).toHaveText("Choose one receipt image at a time.");
+  const pixels = await sharp({ create: { width: 80, height: 100, channels: 3, background: "white" } }).png().toBuffer();
+  await input.focus();
+  const choosing = page.waitForEvent("filechooser");
+  await page.keyboard.press("Enter");
+  await (await choosing).setFiles({ name: "keyboard.png", mimeType: "image/png", buffer: pixels });
+  await expect(error).toHaveText("");
+  const preview = page.getByRole("img", { name: "Selected receipt for checking extracted fields" });
+  await expect.poll(() => preview.evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0);
+  const oldPreview = await preview.getAttribute("src");
+  const file = { name: "dropped.png", type: "image/png", base64: pixels.toString("base64") };
+  const dragging = await transfer([file]);
+  try {
+    await zone.dispatchEvent("dragenter", { dataTransfer: dragging });
+    await expect(zone).toHaveAttribute("data-dragging", "true");
+    await input.dispatchEvent("dragenter", { dataTransfer: dragging });
+    await input.dispatchEvent("dragleave", { dataTransfer: dragging });
+    await expect(zone).toHaveAttribute("data-dragging", "true");
+    await zone.dispatchEvent("dragleave", { dataTransfer: dragging });
+    await expect(zone).toHaveAttribute("data-dragging", "false");
+    await zone.dispatchEvent("dragenter", { dataTransfer: dragging });
+    await accessibleAndFits(page);
+    await page.screenshot({ path: testInfo.outputPath("receipt-dropzone.png"), fullPage: true });
+    await zone.dispatchEvent("drop", { dataTransfer: dragging });
+  } finally { await dragging.dispose(); }
+  await expect(zone).toHaveAttribute("data-dragging", "false");
+  expect(await input.evaluate((element: HTMLInputElement) => element.files?.[0]?.name)).toBe("dropped.png");
+  await expect.poll(() => preview.evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0);
+  expect(await page.evaluate(async (url) => { try { await fetch(url!); return false; } catch { return true; } }, oldPreview)).toBe(true);
+  const text = await page.evaluateHandle(() => { const data = new DataTransfer(); data.setData("text/uri-list", "https://example.invalid"); return data; });
+  try { await zone.dispatchEvent("drop", { dataTransfer: text }); }
+  finally { await text.dispose(); }
+  expect(await input.evaluate((element: HTMLInputElement) => element.files?.[0]?.name)).toBe("dropped.png");
+  await expect(page).toHaveURL(/\/receipts\/new$/);
+  expect(uploads).toBe(0);
+  await expect(page.getByRole("button", { name: "Confirm and save expense", exact: true })).toHaveCount(0);
+  await mockScenario("normal");
+  let release = () => {};
+  const held = new Promise<void>((resolve) => { release = resolve; });
+  await page.route("**/receipts/new", async (route) => { if (route.request().method() === "POST") await held; await route.continue(); });
+  try {
+    await page.getByRole("button", { name: "Extract receipt", exact: true }).click();
+    await expect(input).toBeDisabled();
+    await expect(zone).toHaveAttribute("aria-disabled", "true");
+    await drop([{ ...file, name: "ignored-while-pending.png" }]);
+    expect(await input.evaluate((element: HTMLInputElement) => element.files?.[0]?.name)).toBe("dropped.png");
+  } finally { release(); }
+  await expect(page.getByLabel("Final total (whole kyat)", { exact: true })).toHaveValue("12500");
+  await page.getByLabel("Final total (whole kyat)", { exact: true }).fill("18000");
+  await page.getByLabel("Merchant (optional)", { exact: true }).fill("Dropped synthetic receipt");
+  await chooseDate(page, "Transaction date", date);
+  const otherTab = await page.context().newPage();
+  try {
+    await otherTab.goto(dashboard);
+    await expect(otherTab.getByRole("main").locator('[data-summary="expenses"]')).toHaveAttribute("data-amount", "0");
+  } finally { await otherTab.close(); }
+  await page.getByRole("checkbox").check();
+  await page.getByRole("button", { name: "Confirm and save expense", exact: true }).click();
+  await expect(page).toHaveURL(/saved=created/);
+  await page.goto(dashboard);
+  await expect(page.getByRole("main").locator('[data-summary="expenses"]')).toHaveAttribute("data-amount", "18000");
+});
+
 test("receipt validation, uncertainty, editable review, explicit save and dashboard refresh", async ({
   page,
   account,
@@ -580,11 +899,7 @@ test("receipt validation, uncertainty, editable review, explicit save and dashbo
     .getByLabel("Final total (whole kyat)", { exact: true })
     .filter({ visible: true })
     .fill("18000");
-  await page
-    .getByRole("main")
-    .getByLabel("Transaction date", { exact: true })
-    .filter({ visible: true })
-    .fill(date);
+  await chooseDate(page, "Transaction date", date);
   await page
     .getByRole("main")
     .getByLabel("Merchant (optional)", { exact: true })
@@ -680,11 +995,7 @@ test("unequal group bills, invalid totals, percentage editing and recorded repay
     .getByLabel("Bill total (MMK)", { exact: true })
     .filter({ visible: true })
     .fill("100");
-  await page
-    .getByRole("main")
-    .getByLabel("Date", { exact: true })
-    .filter({ visible: true })
-    .fill(date);
+  await chooseDate(page, "Date", date);
   await page
     .getByRole("main")
     .getByLabel("Who paid?", { exact: true })
@@ -757,11 +1068,7 @@ test("unequal group bills, invalid totals, percentage editing and recorded repay
     .getByLabel("Repaid amount (MMK)", { exact: true })
     .filter({ visible: true })
     .fill("10");
-  await page
-    .getByRole("main")
-    .getByLabel("Repayment date", { exact: true })
-    .filter({ visible: true })
-    .fill(date);
+  await chooseDate(page, "Repayment date", date);
   await expect(
     page.getByRole("button", { name: "Record repayment", exact: true }),
   ).toBeDisabled();
@@ -905,6 +1212,9 @@ test("two real browser sessions isolate records and logout protects routes", asy
     await expect(
       otherPage.getByRole("main").locator('[data-summary="expenses"]'),
     ).toHaveAttribute("data-amount", "0");
+    await otherPage.goto("/analytics?from=2026-11-01&to=2026-11-30");
+    await expect(otherPage.locator('[data-summary="expenses"]')).toHaveAttribute("data-amount", "0");
+    await expect(otherPage.getByText("No income or expenses in this range.", { exact: true })).toBeVisible();
     await otherPage.goto(privatePath);
     await expect(
       otherPage.getByText("Transaction not found", { exact: true }),
@@ -928,6 +1238,7 @@ test("two real browser sessions isolate records and logout protects routes", asy
     ).toBeVisible();
     await page.goto("/app");
     await page.getByRole("button", { name: "Sign out", exact: true }).click();
+    await page.getByRole("alertdialog").getByRole("button", { name: "Yes", exact: true }).click();
     await expect(page).toHaveURL(/\/login$/);
     await page.goto(dashboard);
     await expect(page).toHaveURL(/\/login$/);
@@ -953,9 +1264,20 @@ test("glass surfaces remain accessible with reduced transparency and forced colo
   await page.goto("/login");
   expect(await page.evaluate(() => matchMedia("(prefers-reduced-transparency: reduce)").matches)).toBe(true);
   await accessibleAndFits(page);
-  await expect(page.locator("[data-slot=card]")).toHaveCSS("backdrop-filter", "none");
+  await expect(page.locator("section.glass-panel")).toHaveCSS("backdrop-filter", "none");
   await page.screenshot({ path: testInfo.outputPath("reduced-transparency.png"), fullPage: true });
   await page.emulateMedia({ forcedColors: "active", reducedMotion: "reduce" });
+  await page.reload();
+  const systemText = await page.evaluate(() => {
+    const probe = document.createElement("span");
+    probe.style.color = "CanvasText";
+    document.body.append(probe);
+    const color = getComputedStyle(probe).color;
+    probe.remove();
+    return color;
+  });
+  await expect(page.locator('label[for="auth-email"]')).toHaveCSS("color", systemText);
+  await expect(page.locator('label[for="auth-password"]')).toHaveCSS("color", systemText);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page.locator('[data-slot="toast"][data-kind="error"]')).toBeVisible();
   await accessibleAndFits(page);

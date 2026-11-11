@@ -21,7 +21,7 @@ test("filter validation rejects malformed bounds and unsafe return URLs", () => 
     assert.equal(transactionFiltersSchema.safeParse(values).success, false);
   }
   assert.equal(transactionFiltersSchema.parse({ minAmount: "0" }).minAmount, "0");
-  for (const value of ["https://example.com", "//example.com", "/transactions/other", "/transactions?q=x&q=y", "/transactions?minAmount=bad"]) assert.equal(safeReturnTo(value), "/transactions");
+  for (const value of ["https://example.com", "//example.com", "/transactions/other", "/transactions?q=x&q=y", "/transactions?minAmount=bad", "/transactions?page=1e2", "/transactions?page=0x10"]) assert.equal(safeReturnTo(value), "/transactions");
   assert.equal(safeReturnTo("/transactions?q=shop&minAmount=100&page=2"), "/transactions?q=shop&minAmount=100&page=2");
 });
 

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { calendarDateSchema } from "@/lib/dates";
 import { createTransactionSchema } from "@/features/transactions/schemas";
+import { integerInputSchema } from "@/lib/validation";
 import {
   allocateShares,
   splitInputsSchema,
@@ -58,13 +59,13 @@ export const editExpenseSchema = z
   .strictObject({
     ...expenseFields,
     id: uuid(),
-    version: z.coerce.number().int().min(1).max(2147483646),
+    version: integerInputSchema(1, 2147483646),
   })
   .superRefine(validateSplit);
 export const deleteExpenseSchema = z.strictObject({
   groupId: uuid(),
   id: uuid(),
-  version: z.coerce.number().int().min(1).max(2147483646),
+  version: integerInputSchema(1, 2147483646),
   confirmed: z.literal("yes", "Confirm deletion first."),
 });
 export const settlementSchema = z

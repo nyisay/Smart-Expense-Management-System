@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { calendarDateSchema } from "@/lib/dates";
 import { parseAmount } from "@/lib/money";
+import { integerInputSchema } from "@/lib/validation";
 
 export const transactionTypeSchema = z.enum(["INCOME", "EXPENSE"]);
 const optionalText = (limit: number) =>
@@ -32,11 +33,11 @@ export const createTransactionSchema = z.strictObject({
 export const editTransactionSchema = z.strictObject({
   ...fields,
   id: z.uuid(),
-  version: z.coerce.number().int().min(1).max(2147483646),
+  version: integerInputSchema(1, 2147483646),
 });
 export const deleteTransactionSchema = z.strictObject({
   id: z.uuid(),
-  version: z.coerce.number().int().min(1).max(2147483646),
+  version: integerInputSchema(1, 2147483646),
   confirmed: z.literal("yes", "Confirm deletion first."),
 });
 
@@ -54,7 +55,7 @@ export const transactionFiltersSchema = z
     q: emptyOptional(z.string().trim().max(100)),
     minAmount: emptyOptional(z.string().refine((value) => value === "0" || amountSchema.safeParse(value).success, "Enter a valid whole-kyat minimum.")),
     maxAmount: emptyOptional(z.string().refine((value) => value === "0" || amountSchema.safeParse(value).success, "Enter a valid whole-kyat maximum.")),
-    page: z.coerce.number().int().min(1).max(1000000).default(1),
+    page: integerInputSchema(1, 1000000).default(1),
   })
   .refine((data) => !data.from || !data.to || data.from <= data.to, {
     path: ["to"],

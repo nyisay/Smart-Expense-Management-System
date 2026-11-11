@@ -1,5 +1,53 @@
 # Implementation tasks
 
+## Receipt drag and drop — Completed 2026-11-12
+
+- [x] Add a highlighted, labeled single-image drop zone using native drag/drop and the existing file input. Share type/size validation with picker selection, preserve preview URL cleanup and keyboard file picking, reject invalid/multiple files and ignore text/URL drops or replacements during extraction. Keep upload/extraction/review/save explicit, authenticated and server-validated; add no dependency or storage.
+- [x] Pass lint/typecheck/build, 73 unit/PostgreSQL tests, one HTTP lifecycle and four focused desktop/360px receipt browser cases (1.6 minutes). Verify nested drag enter/leave, invalid/empty/oversized/multiple drops, keyboard chooser, actual FileList/FormData submission, zero auto-uploads, preview revocation, pending guards, corrected confirmation and exact dashboard totals. Existing receipt ambiguity/failure/draft/picker checks also pass. Inspect screenshots, confirm zero fixtures, stop isolated resources and update handoff/setup/requirements. Full unrelated browser regression and real hosted extraction were not rerun; production diagnosis remains pending. No commit, push or deployment.
+
+## Zod boundary validation — Completed 2026-11-12
+
+- [x] Review existing auth/account, transaction/filter, dashboard/Analytics, budget, group, receipt and environment schemas/call sites. Preserve these feature validators, server-derived authorization, exact money and UI feedback; document coverage in ARCHITECTURE/STANDARDS/REQUIREMENTS without adding duplicate validators or dependencies.
+- [x] Replace broad numeric coercion for pagination and transaction/group/budget revisions with one bounded integer-scalar Zod helper. Reject unintended types and alternate numeric notation; retain valid FormData strings, normal numeric callers, page defaults and explicit new-budget revision zero. Reuse the PostgreSQL URL schema before creating Prisma's adapter, with secret-free errors.
+- [x] Reproduce four failing boundary cases before the fix, then pass all four new regressions, database no-write/unchanged-version assertions and HTTP invalid-query recovery. Final lint/typecheck/build, **73 unit/PostgreSQL tests**, **one HTTP lifecycle** and **38 desktop/360px browser cases** (5.1 minutes) pass. Confirm zero fixtures, stop isolated processes/database and pass whitespace checks. No production writes, dependency/schema changes, commit, push or deployment. Production receipt diagnosis remains separately pending its error/configuration evidence.
+
+## Production receipt scanner diagnosis — Awaiting production error/configuration evidence
+
+- [x] Check the confirmed production origin and protected receipt route without credentials or writes. Login responds successfully and unauthenticated receipt rendering redirects to login. Run the five mocked cloud-provider tests; all pass. Check current official Ollama Cloud/model/structured-output and Vercel limit documentation; preserve secret redaction.
+- [ ] Reproduce an authenticated scan using the exact production toast/runtime error and current Vercel Production provider/model/key-presence settings. Browser access host is unavailable, no Vercel CLI/project link is available here, and the local environment uses local Ollama without a cloud key. Do not infer Vercel settings from local configuration, change working extraction speculatively, or claim real hosted extraction passed. The user confirmed the production URL; the exact error and non-secret configuration metadata have been requested.
+
+## Logout button placement and color — Completed 2026-11-12
+
+- [x] Keep No/Yes together in a centered bottom row on desktop/mobile; give Yes a solid semantic red fill and readable dark text. Scope styling to the shared logout confirmation, preserving initial No focus and logout/cancel behavior.
+- [x] Pass lint/typecheck/build and both focused desktop/360px logout browser cases (1.4 minutes), including layout, destructive variant, axe, keyboard, nested mobile drawer, cancellation and logout. Inspect screenshots, fix the initial tinted-button contrast issue, verify zero fixtures and stop isolated resources. Unit/database, HTTP and full browser suites were not rerun for this styling-only change. No commit, push or deployment.
+
+## Logout confirmation — Completed 2026-11-11
+
+- [x] Add one shared shadcn AlertDialog around Settings and expanded/collapsed/mobile navigation logout controls. Ask “Are you sure you want to log out?” with Yes/No, initial No focus, Escape/cancel focus return and disabled submission controls while pending. Preserve the existing server logout action and explicit password-change/session-revocation flow.
+- [x] Verify cancellation sends no POST and preserves unsaved profile fields, keyboard focus containment/return, nested mobile navigation, confirmed logout and protected-route rejection. Pass lint/typecheck/build, 69 unit/PostgreSQL tests, one HTTP lifecycle and eight focused desktop/360px Chromium cases (2.4 minutes), including existing toast, account/password and two-user flows. Inspect the dialog screenshots, pass whitespace checks, confirm zero fixtures and stop isolated test resources. Full financial browser regression was not rerun for this UI-only change. No commit, push or deployment.
+
+## Dedicated Analytics page — Completed 2026-11-11 (D-13)
+
+- [x] Replace the Analytics dashboard-anchor shortcut with protected `/analytics`, active navigation and date/category preservation between reports. Reuse the existing authenticated reporting store, validation and shared filters without changing models or dependencies.
+- [x] Add selectable income/expense, monthly net and exact cumulative-net views; clipped month drill-down by chart and accessible table links; route-aware category filtering; existing comparisons/insights; loading, empty and error recovery states. Revalidate Analytics after personal transaction, receipt and budget mutations.
+- [x] Add exact cumulative, reporting-link and leap/partial-month boundary tests. Pass 69 unit/PostgreSQL cases, one HTTP lifecycle, lint, typecheck and production build. Inspect desktop/360px Analytics screenshots and preserve existing data-isolation rules.
+- [x] Pass the final full 36-case desktop/360px Chromium regression (5.2 minutes), including Analytics interactions, direct bar/line-point clicks, date/category navigation, empty/invalid filters, axe and two-user isolation. Fix hover-dependent click handling and selectors matching hidden cached pages; preserve all existing flows. Record final results, verify zero test users and stop only isolated test resources. No commit, push or deployment.
+
+## TanStack Query caching — Plan awaiting architectural approval (D-12)
+
+- [x] Inspect actual server reads, authentication and existing mutation invalidation; review official TanStack and installed Next.js caching guidance. Prepare CACHING_PLAN.md with query lifetimes, authenticated API/read boundaries, user isolation, invalidation, rollout and measurable tests.
+- [ ] Obtain approval for the proposed client read/API architecture before adding dependencies or changing application fetching. Then implement dashboard/categories first, followed by the remaining financial read views and regression verification. Preserve all existing uncommitted work; no deployment or commit without approval.
+
+## Shared shadcn date/month pickers — Completed 2026-11-11 (D-11)
+
+- [x] Import official Radix/nova Calendar/Popover without overwriting shared Button; pin calendar/date/timezone dependencies. Add one shared ISO-preserving DatePicker across transactions, dashboard filters, receipt review, bills, repayments and budget month selection. Preserve server validation, ownership, exact dates, required/optional fields, drafts and disabled states.
+- [x] Add date/month/leap/boundary/timezone tests and browser selection/keyboard/clear/validation/filter/month/popup/disabled-fieldset checks. Exercise real calendar selection in existing transaction, receipt and group browser flows. Pass 66 unit/database cases, one HTTP lifecycle, lint/typecheck/build and four focused desktop/mobile calendar/system-color cases. Fix hydration, day-label, viewport and obsolete login-card selector issues; preserve every axe rule.
+- [x] Pass the final 34-case desktop/360px browser regression (5.3 minutes), including selected-day hover/reselection and system-color checks. Inspect current screenshots, confirm zero remaining test users and stop the disposable PostgreSQL instance. Final 66-case unit/database and HTTP lifecycle reruns also pass. Record existing dev-tool audit advisories and manual/other-browser limits. No production database, migration, commit, push or deployment change.
+
+## Underline-only auth field focus — Completed 2026-11-11
+
+- [x] Verify the reported hover border: idle/hover are underline-only, while focus adds the shared rectangular ring. Remove that ring only in AuthForm and retain a thicker highlighted focus underline. Extend desktop/mobile field assertions, pass lint/typecheck/build and six focused browser cases, inspect focused rendering and update docs. No deployment.
+
 ## Dark market photograph on auth pages — Completed 2026-11-10
 
 - [x] Replace the pastel artwork with the supplied market photograph using an optimized WebP and a distinct asset URL. Preserve 972×655.2 desktop sizing, equal panels, image cover, mobile layout, forms and background. Pass lint/typecheck/build and six focused browser checks; inspect desktop rendering and update theme/handoff. Leave the source download untouched; no deployment.

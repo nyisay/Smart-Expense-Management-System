@@ -5,15 +5,8 @@ import {
   Wallet,
   Plus,
   ArrowRight,
-  SlidersHorizontal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  NativeSelect,
-  NativeSelectOption,
-} from "@/components/ui/native-select";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -23,15 +16,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { formatAmount } from "@/lib/money";
-import { todayInReportingTimezone } from "@/lib/dates";
-import {
-  dashboardHref,
-  defaultDashboardRange,
-  monthIndex,
-  monthKey,
-  relatedTransactionsHref,
-} from "./filters";
+import { relatedTransactionsHref } from "./filters";
 import { DashboardCharts } from "./charts";
+import { ReportingFilters } from "./filter-form";
 import { CashflowChart } from "./cashflow";
 import { ComparisonView } from "./comparison-view";
 import { InsightsView } from "./insights-view";
@@ -39,17 +26,6 @@ import { RecentTable } from "./recent-table";
 import type { DashboardData } from "./store";
 
 export function DashboardView({ data }: { data: DashboardData }) {
-  const today = todayInReportingTimezone();
-  const presets = [
-    { label: "This month", ...defaultDashboardRange(today) },
-    { label: "Month to date", from: `${today.slice(0, 7)}-01`, to: today },
-    {
-      label: "Last 6 months",
-      from: `${monthKey(monthIndex(today) - 5)}-01`,
-      to: today,
-    },
-    { label: "Year to date", from: `${today.slice(0, 4)}-01-01`, to: today },
-  ];
   const summary = [
     {
       label: "Income",
@@ -98,99 +74,7 @@ export function DashboardView({ data }: { data: DashboardData }) {
           </Link>
         </Button>
       </header>
-      <Card>
-        <CardContent className="space-y-4 pt-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="flex items-center gap-2 text-sm font-medium">
-              <SlidersHorizontal className="size-4" aria-hidden="true" />
-              Date range &amp; category
-            </p>
-            <div className="flex flex-wrap gap-1">
-              {presets.map((preset) => (
-                <Button
-                  key={preset.label}
-                  size="sm"
-                  variant={
-                    data.filters.from === preset.from &&
-                    data.filters.to === preset.to
-                      ? "secondary"
-                      : "ghost"
-                  }
-                  asChild
-                >
-                  <Link
-                    href={dashboardHref({
-                      ...data.filters,
-                      from: preset.from,
-                      to: preset.to,
-                    })}
-                  >
-                    {preset.label}
-                  </Link>
-                </Button>
-              ))}
-            </div>
-          </div>
-          <form
-            key={JSON.stringify(data.filters)}
-            action="/dashboard"
-            method="get"
-            aria-label="Dashboard filters"
-            className="grid items-end gap-4 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1.5fr_auto]"
-          >
-            <div className="space-y-2">
-              <Label htmlFor="dashboard-from">From</Label>
-              <Input
-                id="dashboard-from"
-                name="from"
-                type="date"
-                required
-                min="1900-01-01"
-                max="9999-12-31"
-                defaultValue={data.filters.from}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="dashboard-to">To</Label>
-              <Input
-                id="dashboard-to"
-                name="to"
-                type="date"
-                required
-                min="1900-01-01"
-                max="9999-12-31"
-                defaultValue={data.filters.to}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="dashboard-category">Expense category</Label>
-              <NativeSelect
-                id="dashboard-category"
-                name="categoryId"
-                className="w-full"
-                defaultValue={data.filters.categoryId ?? ""}
-              >
-                <NativeSelectOption value="">All categories</NativeSelectOption>
-                {data.expenseCategories.map((category) => (
-                  <NativeSelectOption key={category.id} value={category.id}>
-                    {category.name}
-                  </NativeSelectOption>
-                ))}
-              </NativeSelect>
-            </div>
-            <div className="flex gap-2">
-              <Button type="submit">Apply filters</Button>
-              <Button variant="ghost" asChild>
-                <Link href="/dashboard">Reset</Link>
-              </Button>
-            </div>
-          </form>
-          <p className="text-xs text-muted-foreground">
-            {data.filters.from} → {data.filters.to}, inclusive · Asia/Yangon ·
-            whole MMK. Every section below uses these filters.
-          </p>
-        </CardContent>
-      </Card>
+      <ReportingFilters data={data} />
       <section
         aria-label="Financial summary"
         className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"

@@ -20,5 +20,6 @@ export async function budgetAction(_state: { message: string }, form: FormData) 
   }
   revalidatePath("/budgets");
   revalidatePath("/dashboard");
+  revalidatePath("/analytics");
   redirect(`/budgets?month=${month}&saved=yes`);
 }

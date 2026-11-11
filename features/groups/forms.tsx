@@ -5,6 +5,7 @@ import { Trash2 } from "lucide-react";
 import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useFeedbackToast, toastInvalidInput } from "@/components/use-feedback-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -264,16 +265,16 @@ export function ExpenseForm({
           </div>
           <div className="space-y-2">
             <Label htmlFor="bill-date">Date</Label>
-            <Input
+            <DatePicker
               id="bill-date"
+              label="Date"
               name="occurredOn"
               required
-              type="date"
               min="1900-01-01"
               max="9999-12-31"
               value={values.occurredOn}
-              onChange={(e) =>
-                setValues({ ...values, occurredOn: e.target.value })
+              onValueChange={(value) =>
+                setValues({ ...values, occurredOn: value })
               }
               aria-invalid={!!state.errors?.occurredOn}
             />
@@ -486,15 +487,15 @@ export function SettlementForm({
         </div>
         <div className="space-y-2">
           <Label htmlFor="settlement-date">Repayment date</Label>
-          <Input
+          <DatePicker
             id="settlement-date"
+            label="Repayment date"
             name="occurredOn"
             required
-            type="date"
             min="1900-01-01"
             max="9999-12-31"
             value={values.occurredOn}
-            onChange={(e) => change("occurredOn", e.target.value)}
+            onValueChange={(value) => change("occurredOn", value)}
             aria-invalid={!!state.errors?.occurredOn}
           />
         </div>

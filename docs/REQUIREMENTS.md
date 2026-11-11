@@ -6,13 +6,25 @@ Status: the implemented MVP has local integration, isolated desktop/mobile Playw
 
 Make personal spending easy to understand through clear, accurate visualizations. Support manual bookkeeping, receipt-assisted expense entry, and unequal group bills in one small application. Persist financial records in PostgreSQL through Prisma; use Auth.js JWT sessions for email/password authentication.
 
-Presentation: Frosted Glass is the sole application appearance under D-10, superseding D-06's selectable Dark Base/Frosted design. Render it from the server on every page, ignore legacy saved theme choices and expose no Appearance selector. Preserve the supplied global photograph, collapsible desktop sidebar, focus-managed mobile drawer, active links, profile/logout controls and existing routes. Analytics and Settings reuse dashboard/account views. Preserve chart readability, exact data, responsive layouts, keyboard access and contrast; support reduced transparency/motion, no-blur fallbacks and forced colors. [UI_THEME.md](UI_THEME.md) records the design and verification approach.
+Presentation: Frosted Glass is the sole application appearance under D-10, superseding D-06's selectable Dark Base/Frosted design. Render it from the server on every page, ignore legacy saved theme choices and expose no Appearance selector. Preserve the supplied global photograph, collapsible desktop sidebar, focus-managed mobile drawer, active links, profile/logout controls and existing routes. Analytics uses its dedicated `/analytics` report under D-13; Settings reuses `/app`. Preserve chart readability, exact data, responsive layouts, keyboard access and contrast; support reduced transparency/motion, no-blur fallbacks and forced colors. [UI_THEME.md](UI_THEME.md) records the design and verification approach.
 
 Confirmed currency/reporting rules: MMK, whole kyat (0 decimal places), Asia/Yangon. Owner-managed groups use named participants, one payer per group expense and exact owed shares; group records remain separate from personal transactions. Receipt review saves only confirmed transaction fields. Recorded settlements represent money repaid outside the application.
 
 Defer bank connections, exchange rates, recurring entries, exports, payment execution, invitations, shared group editing, email verification, password recovery, and paid AI integrations. Monthly budgets, advanced analytics/filtering and rule-based insights are authorized by D-05. Settlement recording does not execute a payment. Do not describe a member balance as a payment made or a bank balance.
 
 ## Functional requirements and acceptance criteria
+
+### Shared input validation
+
+- Validate untrusted form fields, route/query inputs, receipt images/provider output and server configuration with Zod at the relevant server boundary. Reuse feature schemas; native browser constraints improve feedback but cannot replace server validation or ownership checks.
+- Pagination and record revisions accept bounded integer numbers or decimal-digit strings only. Reject booleans, arrays/objects, null, empty strings, fractional/scientific/hex strings and out-of-range values. Omitted pagination defaults to page 1; new budgets require explicit revision 0, while edits/removals require valid persisted revisions.
+- Validate DATABASE_URL before creating the Prisma adapter using the same PostgreSQL URL schema as server configuration. Configuration errors identify only variable names, never their values. Preserve exact bigint financial parsing and existing field-error/draft behavior.
+
+### Shared date and month selection
+
+- Use a shared shadcn Calendar/Popover input for transaction creation/editing, transaction and dashboard date filters, receipt review, group bills and repayments. Budget month selection uses the same popover with a month grid and year control. Do not rely on browser-native date/month popups.
+- Preserve existing field names and exact YYYY-MM-DD / YYYY-MM form values, server Zod validation, required fields, optional empty filters, controlled drafts, disabled fieldsets and reporting rules. ISO typing remains an accessible alternative to calendar selection.
+- Support month navigation, direct year selection from 1900 through 9999, clear and Today/This month, keyboard activation, Escape/focus return and a viewport-bounded popup. Selection uses Asia/Yangon without shifting a day in another device timezone. Invalid dates and out-of-range values must not submit.
 
 ### FR-06 Monthly category budgets
 
@@ -23,6 +35,10 @@ Defer bank connections, exchange rates, recurring entries, exports, payment exec
 
 ### FR-07 Advanced analytics and deterministic insights
 
+- Analytics navigation opens a dedicated protected `/analytics` page, with its own active state, loading/error/empty views and invalid-filter recovery. Reuse authenticated PostgreSQL aggregates; no demo data or shared private cache.
+- Date/category filters scope all report sections. Preserve them across Dashboard/Analytics navigation and matching transaction links. Category selection stays on Analytics rather than navigating to Dashboard.
+- Offer income versus expense, monthly net and cumulative selected-range net chart modes. Calculate running net exactly from zero at the start of the selection; explicitly distinguish it from a bank/opening balance. Exact tables remain available in every mode.
+- Chart clicks and keyboard-accessible month-table links drill into that month, retaining category and clipping partial boundary months to selected dates. Support leap dates and year transitions.
 - Show monthly income/expense bars and net cash-flow trend with exact accessible tables/tooltips and zero-filled months. Every section shares the dashboard's date/category predicates.
 - Compare calendar months, aligned month-to-date or immediately preceding equal-length custom ranges under D-05. Include exact absolute changes and explicit period labels. Suppress conclusions for future-ending ranges and insufficient prior recorded history.
 - Show largest selected expense category, expense change, and signed cash-flow savings rate `(income − expenses) / income`. Zero income and zero previous expense have explicit unavailable percentage states. Do not imply bank savings or complete history.
@@ -41,9 +57,12 @@ Register with email/password, sign in, sign out, and retain a session across rel
 Acceptance:
 - Valid registration persists a user; duplicate normalized emails cannot create two accounts, including concurrent requests.
 - Login and registration passwords start masked. A labeled eye button toggles visibility with pointer, touch or keyboard, preserves the entered value and password-manager autocomplete, and never submits the form. Keep the existing password validation and server authentication unchanged.
+- Login/sign-up name, email and password fields stay underline-only on hover and focus. Keep visible focus feedback through a thicker highlighted underline instead of a rectangular ring; preserve shared control focus styles elsewhere.
 - Login/sign-up use an equal 50/50 desktop split: the user-supplied static illustration in a non-interactive left panel and the functional form on the right. Remove the enclosing background card and its inset padding; the two panels meet without a gap. Cover the image panel completely without stretching; centered cropping is expected when image and panel proportions differ. Use the single Frosted Glass appearance and retain the global photograph. Hide the decorative image panel on smaller screens and retain readable labeled fields, password controls, feedback and existing navigation links.
 - Correct credentials sign in; wrong credentials fail without revealing whether the account exists. Expired, missing, or tampered sessions cannot access protected data or mutate it.
 - Sign-out clears the current session cookie. Tokens and password hashes never reach client props or logs.
+- Sidebar (expanded, collapsed and mobile) and Settings logout controls ask “Are you sure you want to log out?” in an accessible Yes/No dialog. Before confirmation, No or Escape keeps the session and returns focus to the trigger; only Yes submits the existing server logout action. Focus No initially and disable repeated confirmation during submission. Password-change session revocation remains part of its explicit password-update action without a second prompt.
+- Keep logout confirmation buttons together in a centered bottom row on desktop and mobile. Yes uses a readable red destructive style; preserve the existing keyboard order and behavior.
 - User B cannot read, edit, delete, or infer user A's transactions, groups, bills, or chart data by changing IDs or invoking endpoints directly.
 - Rate limits apply to registration and login across application instances. Authentication checks include the persisted user's existence.
 
@@ -93,6 +112,7 @@ Acceptance:
 - No transaction is saved before explicit confirmation. Correcting fields and confirming saves exactly those validated values as one owner-scoped expense, with retry-safe creation and dashboard refresh.
 - API failures, invalid structured responses and unreadable input have safe errors, retry and a manual-entry link. Slow extraction has an announced pending state and a 120-second deadline; no fabricated progress percentage.
 - Reject unsupported MIME types, mismatched signatures, corrupt/animated images, uploads above 4,000,000 bytes (4 MB) and decoded images above 20 megapixels on the server. Block invalid MIME/size selections before browser submission too. Strip metadata and send only decoded/re-encoded pixels to the selected provider. Keep the Server Action body limit below Vercel's 4.5 MB platform ceiling.
+- Support dropping one receipt image into a visibly highlighted upload area and retain the labeled, keyboard-accessible file picker. Both selection methods share size/type validation and preview handling. Reject multiple, empty, oversized and unsupported files; ignore text/URL drops and selection changes while extracting. Dropping never starts extraction or saves an expense; the native file field must carry the selected image when Extract is explicitly submitted.
 - Cloud configuration requires a private API key and an explicit image-capable API model name; invalid configuration must not make a network request. Pin the cloud endpoint, reject redirects, sanitize provider errors, distinguish access/usage-limit failures and bound request time/output size. Since cloud schema enforcement is unavailable, strictly validate prompted JSON before review; invalid output must not replace a previous review or create a transaction.
 - No persistent pixels, raw OCR, unconfirmed metadata or sensitive logging. Upload/extraction/confirmation all require persisted authentication; provider settings are server-only. Reloading clears unsaved review state; SPA navigation may temporarily retain client form state under Cache Components. No tokens or suggestions are stored in localStorage/sessionStorage or server persistence before confirmation.
 - Invalid/ambiguous dates, totals and categories become null with review notices. Unknown/non-MMK currencies clear the amount; saving requires explicit MMK confirmation and positive whole kyat, with no implicit currency conversion.

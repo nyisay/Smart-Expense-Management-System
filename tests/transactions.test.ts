@@ -161,6 +161,11 @@ test("create, read, edit and confirmed delete persist exact amounts and versions
   assert.equal(loaded?.occurredOn, "2026-11-06");
   const { submissionKey: _key, ...fields } = input();
   void _key;
+  for (const version of [true, ["1"], "1e0"]) {
+    await assert.rejects(editTransaction(owner, { ...fields, id: record.id, version }));
+    await assert.rejects(deleteTransaction(owner, { id: record.id, version, confirmed: "yes" }));
+  }
+  assert.equal((await findTransaction(owner, record.id))?.version, 1);
   await editTransaction(owner, {
     ...fields,
     id: record.id,

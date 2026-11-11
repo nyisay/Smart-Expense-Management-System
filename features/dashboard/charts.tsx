@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatAmount } from "@/lib/money";
-import { dashboardHref, formatMonth } from "./filters";
+import { reportingHref, formatMonth, type ReportingPath } from "./filters";
 import { expensePercentage } from "./aggregate";
 import type { DashboardData } from "./store";
 
@@ -49,7 +49,7 @@ type ChartData = Pick<
   "filters" | "categories" | "months" | "expense" | "expenseCategories"
 >;
 
-export function DashboardCharts({ data }: { data: ChartData }) {
+export function DashboardCharts({ data, path = "/dashboard" }: { data: ChartData; path?: ReportingPath }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const color = (id: string) =>
@@ -72,7 +72,7 @@ export function DashboardCharts({ data }: { data: ChartData }) {
     if (pending) return;
     const categoryId = data.filters.categoryId === id ? undefined : id;
     startTransition(() =>
-      router.push(dashboardHref({ ...data.filters, categoryId })),
+      router.push(reportingHref({ ...data.filters, categoryId }, path)),
     );
   }
   return (
@@ -89,7 +89,7 @@ export function DashboardCharts({ data }: { data: ChartData }) {
         {pending
           ? "Updating all totals, charts and transactions…"
           : data.filters.categoryId
-            ? "Expense category selected. All dashboard sections use this filter; income is zero in an expense-only category."
+            ? "Expense category selected. All report sections use this filter; income is zero in an expense-only category."
             : "Select a category in the donut or its table to explore the related transactions."}
       </p>
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.2fr)]">
@@ -171,7 +171,7 @@ export function DashboardCharts({ data }: { data: ChartData }) {
                 <Table className="w-full table-fixed text-left text-sm">
                   <TableCaption className="sr-only">
                     Exact expense category totals. Activate a category button to
-                    filter the entire dashboard.
+                    filter the entire report.
                   </TableCaption>
                   <TableHeader className="text-xs text-muted-foreground">
                     <TableRow>

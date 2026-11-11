@@ -88,6 +88,7 @@ export async function confirmReceiptAction(
   }
   revalidatePath("/transactions", "layout");
   revalidatePath("/dashboard");
+  revalidatePath("/analytics");
   revalidatePath("/receipts/new");
   revalidatePath("/budgets");
   redirect(`/transactions/${id}?saved=created`);
