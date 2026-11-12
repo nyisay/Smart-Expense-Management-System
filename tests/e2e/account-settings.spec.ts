@@ -22,7 +22,7 @@ test("account profile, preferences and password changes preserve ownership and r
     await page.getByLabel("Email", { exact: true }).fill(email);
     await page.getByLabel("Password", { exact: true }).fill(password);
     await page.getByRole("button", { name: "Register", exact: true }).click();
-    await expect(page.getByRole("main").getByRole("status")).toContainText("If registration can be completed");
+    await expect(page).toHaveURL((url) => url.pathname === "/login");
     await login(page, origin, email, password);
     await expect(page).toHaveURL(/\/dashboard$/);
     await page.goto("/app");

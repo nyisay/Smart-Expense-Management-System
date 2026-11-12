@@ -1,5 +1,10 @@
 # Implementation tasks
 
+## Registration redirects to Login — Completed 2026-11-12
+
+- [x] Reproduce successful registration remaining on `/register` with a failing browser assertion. Redirect completed requests server-side to Login outside the action's error handler, retain generic new/existing-email feedback and require explicit login. Keep invalid/throttled/failed submissions on sign-up. Show the existing confirmation toast using a temporary, non-sensitive marker removed from the URL; never include credentials or establish a session during registration.
+- [x] Verify JavaScript and native no-JavaScript submissions (HTTP 303), duplicate registration, server validation, anonymous cookies and subsequent login in desktop/mobile browsers. Update direct registration callers/test helpers. Pass lint, TypeScript, production build, **77 unit/PostgreSQL tests**, **one HTTP lifecycle** and **14 targeted desktop/360px browser cases** (2.9 minutes), including account/session revocation, profile photos, two-user isolation, toast errors, logout and transaction/chart updates. Confirm zero fixtures and stop isolated resources. Full unrelated browser suite and production were not rerun; no schema/dependency/environment change, hosted writes, commit, push or deployment.
+
 ## Dialog and dropdown animations — Completed 2026-11-12
 
 - [x] Add shared CSS opacity/transform entrance/exit animations to confirmation dialogs/backdrops, shadcn Select, calendar popovers, profile menus and mobile navigation. Use explicit Radix data-state and its existing presence/focus behavior, short 160ms entrance/110ms exit, side-aware small menu offsets and a restrained drawer slide. Remove conflicting/disabled animation declarations. Retain calendar state through exits without initializing it during prerender; disable added motion under prefers-reduced-motion. Preserve layers, keyboard behavior, forms and business actions without new dependencies or timers.

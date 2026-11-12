@@ -387,12 +387,9 @@ async function registerAndLogin(
     .filter({ visible: true })
     .fill(account.password);
   await page.getByRole("button", { name: "Register", exact: true }).click();
-  await expect(page.getByRole("main").getByRole("status")).toContainText(
-    "If registration can be completed",
-  );
+  await expect(page).toHaveURL((url) => url.pathname === "/login");
   await expect(page.locator('[data-slot="toast"][data-kind="success"]')).toContainText("Registration request received");
   await page.getByRole("button", { name: "Dismiss notification", exact: true }).click();
-  await page.getByRole("link", { name: "Go to sign in" }).click();
   await expect(page).toHaveURL(/\/login$/);
   await expect(
     page.getByRole("heading", { name: "Sign in", exact: true }),

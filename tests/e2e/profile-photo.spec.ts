@@ -15,7 +15,7 @@ test("profile photo upload, replacement and removal persist privately with initi
     await page.getByLabel("Email", { exact: true }).fill(email);
     await page.getByLabel("Password", { exact: true }).fill(password);
     await page.getByRole("button", { name: "Register", exact: true }).click();
-    await expect(page.getByRole("main").getByRole("status")).toContainText("If registration can be completed");
+    await expect(page).toHaveURL((url) => url.pathname === "/login");
     await page.goto("/login");
     await page.getByLabel("Email", { exact: true }).fill(email);
     await page.getByLabel("Password", { exact: true }).fill(password);
@@ -67,7 +67,7 @@ test("profile photo upload, replacement and removal persist privately with initi
     await other.getByLabel("Email", { exact: true }).fill(otherEmail);
     await other.getByLabel("Password", { exact: true }).fill(password);
     await other.getByRole("button", { name: "Register", exact: true }).click();
-    await expect(other.getByRole("main").getByRole("status")).toContainText("If registration can be completed");
+    await expect(other).toHaveURL((url) => url.pathname === "/login");
     await other.goto(`${origin}/login`);
     await other.getByLabel("Email", { exact: true }).fill(otherEmail);
     await other.getByLabel("Password", { exact: true }).fill(password);

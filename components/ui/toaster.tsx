@@ -37,6 +37,14 @@ export function Toaster() {
     return () => window.removeEventListener(eventName, receive);
   }, []);
   useEffect(() => {
+    if (pathname === "/login") {
+      const url = new URL(window.location.href);
+      if (url.searchParams.get("registered") === "1") {
+        toast.success("If registration can be completed, you can now sign in.", "Registration request received");
+        url.searchParams.delete("registered");
+        window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+      }
+    }
     if (pathname === "/dashboard" && loginStartedAt !== null) {
       const timely = Date.now() - loginStartedAt < 60_000;
       cancelLoginToast();

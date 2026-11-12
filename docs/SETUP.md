@@ -1,5 +1,9 @@
 # Local setup and verification
 
+## Registration redirect
+
+After a valid registration request, the application opens Login automatically. A generic confirmation toast asks you to sign in; enter your credentials to continue. Existing-email submissions follow the same generic path without creating a second account. Invalid or failed submissions stay on sign-up with feedback. The redirect also works without JavaScript; the client toast is optional enhancement. A temporary `registered=1` flag carries no account details and is removed from the login URL when the toast is shown.
+
 ## Dialog and dropdown motion
 
 Open a logout/delete confirmation, the profile menu, a Select field or a date picker. Panels should fade/move in briefly and fade out when closed; mobile navigation also slides slightly. Check No/Escape returns keyboard focus, selection still updates forms and repeated openings leave no overlay behind. Enable your operating system's reduced-motion preference to show these controls immediately without the added motion. No package, database or environment setup is required for these animations.
