@@ -1,5 +1,10 @@
 # Implementation tasks
 
+## Full system recheck and website user guide — Completed 2026-11-12
+
+- [x] Reinspect actual routes, forms, labels and rules for authentication/account, transactions, Dashboard/Analytics, budgets, receipt review and group splitting. Write docs/USER_GUIDE.md with first-use steps, navigation, exact MMK/date meanings, every implemented workflow, realistic group examples, destructive-action/receipt review guidance, keyboard use, troubleshooting and current feature limits. Keep owner configuration separate in SETUP; link the guide/report from README and correct the outdated local-only receipt-provider description.
+- [x] Run the existing production build, lint, TypeScript, **77 unit/PostgreSQL tests**, **one HTTP lifecycle** and the full **52-case desktop/360px Chromium suite** (**9.3 minutes**); all pass. Record evidence and open limits in docs/SYSTEM_RECHECK.md, validate 19 local documentation links/whitespace, confirm zero fixtures and stop isolated resources. No application feature/schema/dependency/environment change, production writes, commit, push or deployment. Authenticated production behavior, real OCR accuracy, navigation performance work and D-12 caching approval remain separate open items.
+
 ## Registration redirects to Login — Completed 2026-11-12
 
 - [x] Reproduce successful registration remaining on `/register` with a failing browser assertion. Redirect completed requests server-side to Login outside the action's error handler, retain generic new/existing-email feedback and require explicit login. Keep invalid/throttled/failed submissions on sign-up. Show the existing confirmation toast using a temporary, non-sensitive marker removed from the URL; never include credentials or establish a session during registration.

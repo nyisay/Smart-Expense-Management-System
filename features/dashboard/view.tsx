@@ -120,7 +120,13 @@ export function DashboardView({ data }: { data: DashboardData }) {
         }}
       />
       </section>
-      <div className="grid items-start gap-6 xl:grid-cols-2"><ComparisonView data={data} /><InsightsView data={data} /></div>
+      <section
+        aria-label="Comparisons and spending insights"
+        className="grid items-stretch gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.2fr)]"
+      >
+        <ComparisonView data={data} />
+        <InsightsView data={data} />
+      </section>
       <Card>
         <CardHeader className="flex flex-wrap items-center justify-between gap-3 sm:flex-row">
           <div>

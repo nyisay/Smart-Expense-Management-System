@@ -5,7 +5,7 @@ import type { DashboardData } from "./store";
 
 export function InsightsView({ data }: { data: DashboardData }) {
   const insights = data.insights;
-  return <Card>
+  return <Card className="h-full min-w-0">
     <CardHeader><CardTitle><h2>Spending insights</h2></CardTitle></CardHeader>
     <CardContent className="space-y-4 text-sm">
       <p className="text-muted-foreground">Rules use only your recorded personal transactions and the selected dates/category. Missing records can change these results.</p>

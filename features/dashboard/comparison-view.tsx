@@ -4,7 +4,7 @@ import type { DashboardData } from "./store";
 
 export function ComparisonView({ data }: { data: DashboardData }) {
   const comparison = data.comparison;
-  return <Card><CardHeader><CardTitle><h2>Previous-period comparison</h2></CardTitle></CardHeader><CardContent className="space-y-3">
+  return <Card className="h-full min-w-0"><CardHeader><CardTitle><h2>Previous-period comparison</h2></CardTitle></CardHeader><CardContent className="space-y-3">
     {comparison.range && <p className="text-sm text-muted-foreground">{comparison.range.label}: {comparison.range.from} to {comparison.range.to}. Same category scope.</p>}
     {comparison.summary ? <>
       <p className="text-sm">Recorded entries only; gaps in your ledger may affect comparisons.</p>
