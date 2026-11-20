@@ -229,7 +229,9 @@ export default async function TransactionsPage({
                           {record.occurredOn}
                         </time>
                       </TableCell>
-                      <TableCell className="whitespace-nowrap px-4 py-4 text-right font-medium tabular-nums">
+                      <TableCell
+                        className={`whitespace-nowrap px-4 py-4 text-right font-medium tabular-nums ${record.type === "INCOME" ? "text-[var(--positive)]" : "text-[var(--negative)]"}`}
+                      >
                         {record.type === "INCOME" ? "+" : "−"}
                         {formatAmount(record.amount)}
                       </TableCell>

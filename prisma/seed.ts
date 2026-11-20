@@ -8,6 +8,11 @@ async function seed() {
     { key: "expense-food", name: "Food", type: "EXPENSE" },
     { key: "expense-travel", name: "Travel", type: "EXPENSE" },
     { key: "expense-housing", name: "Housing", type: "EXPENSE" },
+    { key: "expense-utilities", name: "Utilities", type: "EXPENSE" },
+    { key: "expense-healthcare", name: "Healthcare", type: "EXPENSE" },
+    { key: "expense-education", name: "Education", type: "EXPENSE" },
+    { key: "expense-entertainment", name: "Entertainment", type: "EXPENSE" },
+    { key: "expense-shopping", name: "Shopping", type: "EXPENSE" },
     { key: "expense-other", name: "Other expense", type: "EXPENSE" },
   ] as const;
   await prisma.$transaction(categories.map((category) => prisma.category.upsert({

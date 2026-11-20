@@ -14,7 +14,12 @@ function createPrismaClient() {
     throw new Error("Missing or invalid database configuration: DATABASE_URL.");
   }
 
-  const adapter = new PrismaPg({ connectionString: connection.data });
+  const connectionUrl = new URL(connection.data);
+  if (connectionUrl.searchParams.get("sslmode") === "require") {
+    connectionUrl.searchParams.set("sslmode", "verify-full");
+  }
+
+  const adapter = new PrismaPg({ connectionString: connectionUrl.toString() });
   return new PrismaClient({ adapter });
 }
 
